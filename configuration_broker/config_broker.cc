@@ -27,8 +27,8 @@ using Debug = ConditionalDebug<DEBUG_CONFIG_BROKER, "Config Broker">;
 // Internal represention of Configurtaion Items
 struct NamedConfigItem
 {
-	char      *name; // name matched to capabilities
-	ConfigItem item;
+	const char *name; // name matched to capabilities
+	ConfigItem  item;
 };
 
 //
@@ -37,14 +37,17 @@ struct NamedConfigItem
 std::vector<struct NamedConfigItem *> configData;
 
 //
+// Sealing Types
+//
+#define CONFIG_WRITE STATIC_SEALING_TYPE(WriteConfigKey)
+#define CONFIG_READ STATIC_SEALING_TYPE(ReadConfigKey)
+
+//
 // unseal a config capability.
 //
-ConfigToken *config_capability_unseal(SObj sealedCap)
+ConfigToken *config_capability_unseal(SObj sealedCap, SKey key)
 {
-	auto key = STATIC_SEALING_TYPE(ConfigKey);
-
-	ConfigToken *token =
-	  token_unseal<ConfigToken>(key, Sealed<ConfigToken>{sealedCap});
+	ConfigToken *token = token_unseal(key, Sealed<ConfigToken>{sealedCap});
 
 	if (token == nullptr)
 	{
@@ -52,9 +55,8 @@ ConfigToken *config_capability_unseal(SObj sealedCap)
 		return nullptr;
 	}
 
-	Debug::log("Unsealed id: {} kind: {} size:{} item: {}",
+	Debug::log("Unsealed id: {} size:{} item: {}",
 	           token->id,
-	           token->kind,
 	           token->maxSize,
 	           token->ConfigId);
 
@@ -73,11 +75,11 @@ ConfigToken *config_capability_unseal(SObj sealedCap)
 // Find a Config by name.  If it doesn't already exist
 // create one.
 //
-NamedConfigItem *find_or_create_config(const char *name)
+NamedConfigItem *find_or_create_config(ConfigToken *token)
 {
 	for (auto &c : configData)
 	{
-		if (strcmp(c->name, name) == 0)
+		if (strcmp(c->name, token->ConfigId) == 0)
 		{
 			return c;
 		}
@@ -87,13 +89,10 @@ NamedConfigItem *find_or_create_config(const char *name)
 	NamedConfigItem *c =
 	  static_cast<NamedConfigItem *>(malloc(sizeof(NamedConfigItem)));
 
-	// Save the name as a read only capability
-	auto nameBuffer = static_cast<char *>(malloc(strlen(name)));
-	strncpy(nameBuffer, name, strlen(name));
-	CHERI::Capability roName{nameBuffer};
-	roName.permissions() &=
-	  roName.permissions().without(CHERI::Permission::Store);
-	c->name         = roName;
+	// Use the ConfigId from the token that triggered the creation
+	// as the name value, since sealed objects are guaranteed not
+	// to be deallocated.
+	c->name         = token->ConfigId;
 	c->item.version = 0;
 	c->item.data    = nullptr;
 
@@ -116,18 +115,10 @@ int __cheri_compartment("config_broker")
 	           data,
 	           size);
 
-	ConfigToken *token = config_capability_unseal(sealedCap);
+	ConfigToken *token = config_capability_unseal(sealedCap, CONFIG_WRITE);
 	if (token == nullptr)
 	{
 		Debug::log("Invalid capability: {}", sealedCap);
-		return -1;
-	}
-
-	// Check we have a WriteToken
-	if (token->kind != WriteToken)
-	{
-		Debug::log(
-		  "Not a write capability for {}: {}", token->ConfigId, sealedCap);
 		return -1;
 	}
 
@@ -163,7 +154,7 @@ int __cheri_compartment("config_broker")
 	};
 
 	// Find or create a config structure
-	NamedConfigItem *c = find_or_create_config(token->ConfigId);
+	NamedConfigItem *c = find_or_create_config(token);
 
 	// Free the old data value.  Any subscribers that received it should
 	// have thier own claim on it if needed
@@ -186,7 +177,7 @@ int __cheri_compartment("config_broker")
 	// Trigger out thread to process the update
 	Debug::log("Waking subscribers {}", c->item.version);
 	futex_wake(&(c->item.version), -1);
-
+	
 	return 0;
 }
 
@@ -202,7 +193,7 @@ ConfigItem *__cheri_compartment("config_broker") get_config(SObj sealedCap)
 
 	// Get the calling compartments name from
 	// its sealed capability
-	ConfigToken *token = config_capability_unseal(sealedCap);
+	ConfigToken *token = config_capability_unseal(sealedCap, CONFIG_READ);
 
 	if (token == nullptr)
 	{
@@ -210,7 +201,7 @@ ConfigItem *__cheri_compartment("config_broker") get_config(SObj sealedCap)
 		return nullptr;
 	}
 
-	auto c = find_or_create_config(token->ConfigId);
+	auto c = find_or_create_config(token);
 
 	// return a read only copy of the item;
 	// Debug::log("was {}", c);

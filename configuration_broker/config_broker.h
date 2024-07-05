@@ -8,34 +8,28 @@
 #include "token.h"
 #include <compartment.h>
 
-enum ConfigTokenKind
-{
-	ReadToken,
-	WriteToken
-};
-
 // Interal representaion of a configuration token
 struct ConfigToken
 {
-	ConfigTokenKind kind;       // Set to true in write capabilites
-	uint16_t        id;         // id for the capability, assigned on first use
-	size_t          maxSize;    // Max size of the item
-	const char      ConfigId[]; // Name of the configuration item
+	uint16_t   id;         // id for the capability, assigned on first use
+	size_t     maxSize;    // Max size of the item
+	const char ConfigId[]; // Name of the configuration item
 };
 
+//
+// SEALED CAPABILITY TO READ CONFIG
+//
 #define DEFINE_READ_CONFIG_CAPABILITY(name)                                    \
                                                                                \
 	DECLARE_AND_DEFINE_STATIC_SEALED_VALUE(                                    \
 	  struct {                                                                 \
-		  ConfigTokenKind kind;                                                \
-		  uint16_t        id;                                                  \
-		  size_t          maxSize;                                             \
-		  const char      ConfigId[sizeof(name)];                              \
+		  uint16_t   id;                                                       \
+		  size_t     maxSize;                                                  \
+		  const char ConfigId[sizeof(name)];                                   \
 	  },                                                                       \
 	  config_broker,                                                           \
-	  ConfigKey,                                                               \
+	  ReadConfigKey,                                                           \
 	  __read_config_capability_##name,                                         \
-	  ReadToken,                                                               \
 	  0,                                                                       \
 	  0,                                                                       \
 	  name);
@@ -43,19 +37,20 @@ struct ConfigToken
 #define READ_CONFIG_CAPABILITY(name)                                           \
 	STATIC_SEALED_VALUE(__read_config_capability_##name)
 
+//
+// SEALED CAPABILITY TO WRITE CONFIG
+//
 #define DEFINE_WRITE_CONFIG_CAPABILITY(name, size)                             \
                                                                                \
 	DECLARE_AND_DEFINE_STATIC_SEALED_VALUE(                                    \
 	  struct {                                                                 \
-		  ConfigTokenKind kind;                                                \
-		  uint16_t        id;                                                  \
-		  size_t          maxSize;                                             \
-		  const char      ConfigId[sizeof(name)];                              \
+		  uint16_t   id;                                                       \
+		  size_t     maxSize;                                                  \
+		  const char ConfigId[sizeof(name)];                                   \
 	  },                                                                       \
 	  config_broker,                                                           \
-	  ConfigKey,                                                               \
+	  WriteConfigKey,                                                          \
 	  __write_config_capability_##name,                                        \
-	  WriteToken,                                                              \
 	  0,                                                                       \
 	  size,                                                                    \
 	  name);
