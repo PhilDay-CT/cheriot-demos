@@ -8,7 +8,7 @@
 
 #include "data.h"
 
-// Expose debugging features unconditionally for this compartment.
+// Expose debugging features unconditionally for this library.
 using Debug = ConditionalDebug<true, "Config Data">;
 
 //

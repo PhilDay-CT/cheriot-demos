@@ -174,10 +174,10 @@ int __cheri_compartment("config_broker")
 	// Mark it as having been updated
 	c->item.version++;
 
-	// Trigger out thread to process the update
-	Debug::log("Waking subscribers {}", c->item.version);
-	futex_wake(&(c->item.version), -1);
-	
+	// Notify anyone waiting for the version to change
+	Debug::log("Waking subscribers {}", c->item.version.load());
+	c->item.version.notify_all();
+
 	return 0;
 }
 

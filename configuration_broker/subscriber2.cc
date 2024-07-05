@@ -76,27 +76,28 @@ void __cheri_compartment("subscriber2") init()
 		  "thread {} failed to get {}", thread_id_get(), CONFIG_ITEM_NAME);
 		return;
 	}
+
+	auto configVersion = config->version.load();
 	Debug::log("thread {} got version:{} of {}",
 	           thread_id_get(),
-	           config->version,
+	           configVersion,
 	           CONFIG_ITEM_NAME);
 	process_update(config);
-	auto configVersion = config->version;
 
 	// Loop waiting for config changes
 	while (true)
 	{
 		Timeout t1{MS_TO_TICKS(2000)};
-		if (futex_timed_wait(&t1, &(config->version), configVersion) == 0)
+		if (config->version.wait(&t1, configVersion) == 0)
 		{
 			auto config = get_config(READ_CONFIG_CAPABILITY(CONFIG_ITEM_NAME));
 			Debug::log("thread {} got version:{} of {}",
 			           thread_id_get(),
-			           config->version,
+			           config->version.load(),
 			           CONFIG_ITEM_NAME);
 
 			process_update(config);
-			configVersion = config->version;
+			configVersion = config->version.load();
 		}
 		else
 		{

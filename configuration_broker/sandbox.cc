@@ -8,13 +8,19 @@
 
 #include <debug.hh>
 #include <string.h>
-using Debug = ConditionalDebug<true, "Sandbox">;
+using Debug = ConditionalDebug<DEBUG_SANDBOX, "Sandbox">;
 
 #include "data.h"
 
+//
+// This error handler only exists the create the debug output, which
+// can be enabled the config option -debug-sandbox=true
+// The sandbox will still fulfill it's role without an error handler.
+//
 extern "C" ErrorRecoveryBehaviour
 compartment_error_handler(ErrorState *frame, size_t mcause, size_t mtval)
 {
+	//
 	auto [exceptionCode, registerNumber] = CHERI::extract_cheri_mtval(mtval);
 	void *faultingRegister               = nullptr;
 	if (registerNumber == CHERI::RegisterNumber::PCC)

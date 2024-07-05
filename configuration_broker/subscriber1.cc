@@ -76,25 +76,27 @@ void __cheri_compartment("subscriber1") init()
 		  "thread {} failed to get {}", thread_id_get(), CONFIG_ITEM_NAME);
 		return;
 	}
+
+	auto configVersion = config->version.load();
 	Debug::log("thread {} got version:{} of {}",
 	           thread_id_get(),
-	           config->version,
+	           configVersion,
 	           CONFIG_ITEM_NAME);
 	process_update(config);
-	auto configVersion = config->version;
 
-	// Loop waiting for config changes
+	// Loop waiting for a change in version of the config item
 	while (true)
 	{
-		futex_wait(&(config->version), configVersion);
+		config->version.wait(configVersion);
+
 		auto config = get_config(READ_CONFIG_CAPABILITY(CONFIG_ITEM_NAME));
 		Debug::log("thread {} got version:{} of {}",
 		           thread_id_get(),
-		           config->version,
+		           config->version.load(),
 		           CONFIG_ITEM_NAME);
 
 		process_update(config);
-		configVersion = config->version;
+		configVersion = config->version.load();
 
 		// Check we're not leaking data;
 		// Debug::log("heap quota available: {}",

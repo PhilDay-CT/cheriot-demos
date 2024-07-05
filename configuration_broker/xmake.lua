@@ -40,7 +40,9 @@ compartment("subscriber3")
     add_files("subscriber3.cc")
 
 -- Sandbox Compartment
+debugOption("sandbox");
 compartment("sandbox")
+    add_rules("cheriot.component-debug")
     add_files("sandbox.cc")
 
 -- Debug options

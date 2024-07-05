@@ -24,27 +24,27 @@ using Debug = ConditionalDebug<true, "Subscriber #3">;
 #include "data.h"
 #include "sandbox.h"
 
-// Keep track of the items and thier last version
+// Keep track of the items and their last version
 struct Config
 {
 	const char *name;      // Name of the item
 	SObj        capablity; // Sealed Read Capability
-	ConfigItem *item;      // last received item from broker
+	ConfigItem *item;      // item from then broker
+	uint32_t    version;   // last version from broker
 	Data       *data;      // last valid config data
 };
 
 //
 // Process a change in config data
 //
-void process_update(Data **configData, ConfigItem *config, const char *itemName)
+void process_update(Data **configData, void *data, const char *itemName)
 {
-	if (config->data != nullptr)
+	if (data != nullptr)
 	{
-		if (sandbox_validate(config->data) < 0)
+		if (sandbox_validate(data) < 0)
 		{
-			Debug::log("thread {} Validation failed for {}",
-			           thread_id_get(),
-			           config->data);
+			Debug::log(
+			  "thread {} Validation failed for {}", thread_id_get(), data);
 		}
 		else
 		{
@@ -53,7 +53,7 @@ void process_update(Data **configData, ConfigItem *config, const char *itemName)
 			{
 				free(*configData);
 			}
-			*configData = static_cast<Data *>(config->data);
+			*configData = static_cast<Data *>(data);
 
 			// Claim the new value so we keep access to it even if
 			// the next value from the broker is invalid
@@ -75,8 +75,8 @@ void __cheri_compartment("subscriber3") init()
 {
 	// List of configuration items we are tracking
 	Config configItems[] = {
-	  {CONFIG1, READ_CONFIG_CAPABILITY(CONFIG1), nullptr, nullptr},
-	  {CONFIG2, READ_CONFIG_CAPABILITY(CONFIG2), nullptr, nullptr},
+	  {CONFIG1, READ_CONFIG_CAPABILITY(CONFIG1), nullptr, 0, nullptr},
+	  {CONFIG2, READ_CONFIG_CAPABILITY(CONFIG2), nullptr, 0, nullptr},
 	};
 
 	auto numOfItems = sizeof(configItems) / sizeof(configItems[0]);
@@ -84,7 +84,7 @@ void __cheri_compartment("subscriber3") init()
 	// Create the multi waiter
 	struct MultiWaiter *mw = nullptr;
 	Timeout             t1{MS_TO_TICKS(1000)};
-	multiwaiter_create(&t1, MALLOC_CAPABILITY, &mw, 3);
+	multiwaiter_create(&t1, MALLOC_CAPABILITY, &mw, 2);
 	if (mw == nullptr)
 	{
 		Debug::log("thread {} failed to create multiwaiter", thread_id_get());
@@ -101,11 +101,11 @@ void __cheri_compartment("subscriber3") init()
 			Debug::log("thread {} failed to get {}", thread_id_get(), c.name);
 			return;
 		}
-		Debug::log("thread {} got version:{} of {}",
-		           thread_id_get(),
-		           c.item->version,
-		           c.name);
-		process_update(&c.data, c.item, c.name);
+
+		c.version = c.item->version.load();
+		Debug::log(
+		  "thread {} got version:{} of {}", thread_id_get(), c.version, c.name);
+		process_update(&c.data, c.item->data, c.name);
 	}
 
 	// Loop waiting for config changes
@@ -118,7 +118,7 @@ void __cheri_compartment("subscriber3") init()
 		{
 			events[i] = {&(configItems[i].item->version),
 			             EventWaiterFutex,
-			             configItems[i].item->version};
+			             configItems[i].version};
 		}
 
 		Timeout t{MS_TO_TICKS(10000)};
@@ -129,14 +129,15 @@ void __cheri_compartment("subscriber3") init()
 			{
 				if (events[i].value == 1)
 				{
-					auto c  = &configItems[i];
-					c->item = get_config(c->capablity);
+					auto c     = &configItems[i];
+					c->item    = get_config(c->capablity);
+					c->version = c->item->version.load();
 					Debug::log("thread {} got version:{} of {}",
 					           thread_id_get(),
-					           c->item->version,
+					           c->version,
 					           c->name);
 
-					process_update(&c->data, c->item, c->name);
+					process_update(&c->data, c->item->data, c->name);
 				}
 			}
 		}

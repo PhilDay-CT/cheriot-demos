@@ -39,7 +39,7 @@ void gen_config(SObj        sealedCap,
 	data->count = count;
 	strlcpy(data->token, token, sizeof(token));
 
-	// Pass a read only capability to the broker
+	// Pass a read-only local capability to the broker
 	CHERI::Capability roData{data};
 	roData.permissions() &= {CHERI::Permission::Load};
 	if (set_config(sealedCap, static_cast<void *>(roData), sizeof(Data)) < 0)

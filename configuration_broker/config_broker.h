@@ -6,6 +6,7 @@
 #include "cdefs.h"
 #include "compartment-macros.h"
 #include "token.h"
+#include <atomic>
 #include <compartment.h>
 
 // Interal representaion of a configuration token
@@ -64,8 +65,8 @@ struct ConfigToken
 //
 struct ConfigItem
 {
-	uint32_t version; // version - used as a futex
-	void    *data;    // value
+	std::atomic<uint32_t> version; // version - used as a futex
+	void                 *data;    // value
 };
 
 /**
