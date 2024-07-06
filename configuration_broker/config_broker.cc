@@ -10,9 +10,9 @@
 #include <debug.hh>
 #include <fail-simulator-on-error.h>
 #include <futex.h>
-#include <thread.h>
-
+#include <locks.hh>
 #include <string.h>
+#include <thread.h>
 #include <vector>
 
 #include "config_broker.h"
@@ -73,10 +73,15 @@ ConfigToken *config_capability_unseal(SObj sealedCap, SKey key)
 
 //
 // Find a Config by name.  If it doesn't already exist
-// create one.
+// create one.  Use a LockGuard to protect aginst two
+// threads trying to create the same item.
 //
+FlagLock lockFindOrCreate;
+
 NamedConfigItem *find_or_create_config(ConfigToken *token)
 {
+	LockGuard g{lockFindOrCreate};
+
 	for (auto &c : configData)
 	{
 		if (strcmp(c->name, token->ConfigId) == 0)
@@ -104,11 +109,16 @@ NamedConfigItem *find_or_create_config(ConfigToken *token)
 
 //
 // Set a new value for the configuration item described by
-// the capability.
+// the capability.  Use a LockGuard to protect against multiple
+// threads trying to set the same item.
 //
+FlagLock lockSetConfig;
+
 int __cheri_compartment("config_broker")
   set_config(SObj sealedCap, void *data, size_t size)
 {
+	LockGuard g{lockSetConfig};
+
 	Debug::log("thread {} Set config called with {} {} {}",
 	           thread_id_get(),
 	           sealedCap,

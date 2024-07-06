@@ -12,6 +12,9 @@
 // Expose debugging features unconditionally for this compartment.
 using Debug = ConditionalDebug<true, "Publisher">;
 
+//
+// Helper for the example to create delay in the publisher
+//
 static inline void sleep(const uint32_t mS)
 {
 	Timeout t1{MS_TO_TICKS(mS)};
