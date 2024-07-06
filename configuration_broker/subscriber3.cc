@@ -27,24 +27,26 @@ using Debug = ConditionalDebug<true, "Subscriber #3">;
 // Keep track of the items and their last version
 struct Config
 {
-	const char *name;      // Name of the item
-	SObj        capablity; // Sealed Read Capability
-	ConfigItem *item;      // item from then broker
-	uint32_t    version;   // last version from broker
-	Data       *data;      // last valid config data
+	SObj        capability; // Sealed Read Capability
+	ConfigItem *item;       // item from the broker
+	uint32_t    version;    // last version from broker
+	Data       *data;       // last valid config data
 };
 
 //
-// Process a change in config data
+// Process a change in a configurarion value
+//   configData is a pointer to the current value
+//   item is the new, untrusted and possibily invaild new version
 //
-void process_update(Data **configData, void *data, const char *itemName)
+void process_update(Data **configData, ConfigItem *item)
 {
-	if (data != nullptr)
+	if (item->data != nullptr)
 	{
-		if (sandbox_validate(data) < 0)
+		if (sandbox_validate(item->data) < 0)
 		{
-			Debug::log(
-			  "thread {} Validation failed for {}", thread_id_get(), data);
+			Debug::log("thread {} Validation failed for {}",
+			           thread_id_get(),
+			           item->data);
 		}
 		else
 		{
@@ -53,7 +55,7 @@ void process_update(Data **configData, void *data, const char *itemName)
 			{
 				free(*configData);
 			}
-			*configData = static_cast<Data *>(data);
+			*configData = static_cast<Data *>(item->data);
 
 			// Claim the new value so we keep access to it even if
 			// the next value from the broker is invalid
@@ -65,7 +67,7 @@ void process_update(Data **configData, void *data, const char *itemName)
 	}
 
 	// Print the current value
-	print_config(itemName, *configData);
+	print_config(item->id, *configData);
 }
 
 //
@@ -75,8 +77,8 @@ void __cheri_compartment("subscriber3") init()
 {
 	// List of configuration items we are tracking
 	Config configItems[] = {
-	  {CONFIG1, READ_CONFIG_CAPABILITY(CONFIG1), nullptr, 0, nullptr},
-	  {CONFIG2, READ_CONFIG_CAPABILITY(CONFIG2), nullptr, 0, nullptr},
+	  {READ_CONFIG_CAPABILITY(CONFIG1), nullptr, 0, nullptr},
+	  {READ_CONFIG_CAPABILITY(CONFIG2), nullptr, 0, nullptr},
 	};
 
 	auto numOfItems = sizeof(configItems) / sizeof(configItems[0]);
@@ -95,17 +97,20 @@ void __cheri_compartment("subscriber3") init()
 	// and the version & futex to wait on
 	for (auto &c : configItems)
 	{
-		c.item = get_config(c.capablity);
+		c.item = get_config(c.capability);
 		if (c.item == nullptr)
 		{
-			Debug::log("thread {} failed to get {}", thread_id_get(), c.name);
+			Debug::log(
+			  "thread {} failed to get {}", thread_id_get(), c.item->id);
 			return;
 		}
 
 		c.version = c.item->version.load();
-		Debug::log(
-		  "thread {} got version:{} of {}", thread_id_get(), c.version, c.name);
-		process_update(&c.data, c.item->data, c.name);
+		Debug::log("thread {} got version:{} of {}",
+		           thread_id_get(),
+		           c.version,
+		           c.item->id);
+		process_update(&c.data, c.item);
 	}
 
 	// Loop waiting for config changes
@@ -130,14 +135,14 @@ void __cheri_compartment("subscriber3") init()
 				if (events[i].value == 1)
 				{
 					auto c     = &configItems[i];
-					c->item    = get_config(c->capablity);
+					c->item    = get_config(c->capability);
 					c->version = c->item->version.load();
 					Debug::log("thread {} got version:{} of {}",
 					           thread_id_get(),
 					           c->version,
-					           c->name);
+					           c->item->id);
 
-					process_update(&c->data, c->item->data, c->name);
+					process_update(&c->data, c->item);
 				}
 			}
 		}

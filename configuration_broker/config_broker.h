@@ -67,6 +67,7 @@ struct ConfigItem
 {
 	std::atomic<uint32_t> version; // version - used as a futex
 	void                 *data;    // value
+	const char           *id;      // id
 };
 
 /**

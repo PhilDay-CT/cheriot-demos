@@ -59,7 +59,7 @@ void process_update(ConfigItem *config)
 	}
 
 	// Print the current value
-	print_config(CONFIG_ITEM_NAME, configData);
+	print_config(config->id, configData);
 }
 
 //
@@ -81,7 +81,7 @@ void __cheri_compartment("subscriber1") init()
 	Debug::log("thread {} got version:{} of {}",
 	           thread_id_get(),
 	           configVersion,
-	           CONFIG_ITEM_NAME);
+	           config->id);
 	process_update(config);
 
 	// Loop waiting for a change in version of the config item
@@ -89,14 +89,14 @@ void __cheri_compartment("subscriber1") init()
 	{
 		config->version.wait(configVersion);
 
-		auto config = get_config(READ_CONFIG_CAPABILITY(CONFIG_ITEM_NAME));
+		auto config   = get_config(READ_CONFIG_CAPABILITY(CONFIG_ITEM_NAME));
+		configVersion = config->version.load();
 		Debug::log("thread {} got version:{} of {}",
 		           thread_id_get(),
-		           config->version.load(),
-		           CONFIG_ITEM_NAME);
+		           configVersion,
+		           config->id);
 
 		process_update(config);
-		configVersion = config->version.load();
 
 		// Check we're not leaking data;
 		// Debug::log("heap quota available: {}",

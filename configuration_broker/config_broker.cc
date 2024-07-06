@@ -24,17 +24,10 @@ using namespace CHERI;
 // Expose debugging features unconditionally for this compartment.
 using Debug = ConditionalDebug<DEBUG_CONFIG_BROKER, "Config Broker">;
 
-// Internal represention of Configurtaion Items
-struct NamedConfigItem
-{
-	const char *name; // name matched to capabilities
-	ConfigItem  item;
-};
-
 //
 // Set of config data items.
 //
-std::vector<struct NamedConfigItem *> configData;
+std::vector<struct ConfigItem *> configData;
 
 //
 // Sealing Types
@@ -78,28 +71,27 @@ ConfigToken *config_capability_unseal(SObj sealedCap, SKey key)
 //
 FlagLock lockFindOrCreate;
 
-NamedConfigItem *find_or_create_config(ConfigToken *token)
+ConfigItem *find_or_create_config(ConfigToken *token)
 {
 	LockGuard g{lockFindOrCreate};
 
 	for (auto &c : configData)
 	{
-		if (strcmp(c->name, token->ConfigId) == 0)
+		if (strcmp(c->id, token->ConfigId) == 0)
 		{
 			return c;
 		}
 	}
 
 	// Allocate a Config object
-	NamedConfigItem *c =
-	  static_cast<NamedConfigItem *>(malloc(sizeof(NamedConfigItem)));
+	ConfigItem *c = static_cast<ConfigItem *>(malloc(sizeof(ConfigItem)));
 
 	// Use the ConfigId from the token that triggered the creation
 	// as the name value, since sealed objects are guaranteed not
 	// to be deallocated.
-	c->name         = token->ConfigId;
-	c->item.version = 0;
-	c->item.data    = nullptr;
+	c->id      = token->ConfigId;
+	c->version = 0;
+	c->data    = nullptr;
 
 	// Add it to the vector
 	configData.push_back(c);
@@ -164,13 +156,13 @@ int __cheri_compartment("config_broker")
 	};
 
 	// Find or create a config structure
-	NamedConfigItem *c = find_or_create_config(token);
+	ConfigItem *c = find_or_create_config(token);
 
 	// Free the old data value.  Any subscribers that received it should
 	// have thier own claim on it if needed
-	if (c->item.data)
+	if (c->data)
 	{
-		free(c->item.data);
+		free(c->data);
 	}
 
 	// Neither we nor the subscribers need to be able to update the
@@ -178,15 +170,15 @@ int __cheri_compartment("config_broker")
 	CHERI::Capability roData{newData};
 	roData.permissions() &=
 	  roData.permissions().without(CHERI::Permission::Store);
-	c->item.data = roData;
-	Debug::log("Data {}", c->item.data);
+	c->data = roData;
+	Debug::log("Data {}", c->data);
 
 	// Mark it as having been updated
-	c->item.version++;
+	c->version++;
 
 	// Notify anyone waiting for the version to change
-	Debug::log("Waking subscribers {}", c->item.version.load());
-	c->item.version.notify_all();
+	Debug::log("Waking subscribers {}", c->version.load());
+	c->version.notify_all();
 
 	return 0;
 }
@@ -215,7 +207,7 @@ ConfigItem *__cheri_compartment("config_broker") get_config(SObj sealedCap)
 
 	// return a read only copy of the item;
 	// Debug::log("was {}", c);
-	CHERI::Capability item{&c->item};
+	CHERI::Capability item{c};
 	item.permissions() &= item.permissions().without(CHERI::Permission::Store);
 	return item;
 }
