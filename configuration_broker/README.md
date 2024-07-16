@@ -1,19 +1,77 @@
 Safe Configuration Management
 =============================
 
-This example shows how dynamic configuration changes can be made to compartments using the ChERIoT features of static sealed capabilities, memory claims, a futex, and a sandbox compartment for handling untrusted data.
+All system rely on some form of configuration data, and the configuration interface is a significant part of the attack surface.
+Misconfiguration, whether accidential or malicious, is one of the main sources of security vulnerabilites.
+The solution in many cases is to create an often complex trust model around and within the configuration system, where the complexity itself adds to the risk profile. 
 
+This example shows how the CHERIoT features can be used to create a system where configuration data can be securely and safely distributed to a number compartments with a simple and minimal trust model.
+This supports, for example, a compartement architecture where third party components can be safely integrated and dynamically configured.
+
+There are two main aspects to the security model:
+* Static Sealed Capabilities are used to define which compartments can modify and/or consume configuration data, and how much memory each configuration item can consume.  
+As well as providing run time controls this aspect of the configuration can be audited at build time.
+
+* A configuration broker provides an abstraction layer between providers and consumers of configuration data, enabling the trust model to be expressed only in terms of the relationships with the broker.
+
+In the context of this example the Configuration Broker is intended to be directly reusable, whilst the providers and consumers are exemplar code of how to develop such compontents using CHERIoT features such as static sealed capabilities, memory claims, locks, event-waiters, and sandbox compartments for handling untrusted data.
+
+Providing a generic broker and expressing the trust model via its interfaces makes it possible to add support for new configurtaion items without having to re-examine the model. 
+
+/// Maybe remove this
 In this model a configuration item is a named blob of data.
 There are compartments which supply configuration items (for example received by them via the network) and other compartments that need to receive specific configuration items when ever they change.
 None of these compartments know about or trust each other; keeping them decoupled helps to keep the system simple, and make it easy to add new items and compartments with a minimal amount of development.
+///
 
 ## Overview
 
+In the demo each item of configuration data has a name, a value, and a version.
+
+There are three main roles:
+* Providers supply the values for one or more items.
+* Consumers react when the value of an iterm changes.
+* The Broker provides an abstaction layer between Providers and Consumers; it holds the current value and maintains the version for each item.  
+
 The model is similar to a pub/sub architecture with a single retained message for each item and a security policy defined at build time through static sealed capabilities.
-The configuration data is declarative so there is no need or value in maintaining a full sequence of updates.
-Providing the role of the broker is a config_broker compartment, which has the unsealing key.
+The configuration data is declarative so there is no need or value in maintaining a full sequence of updates; each new version is a complete definition of the required configuration item. 
 Aligned with the pub/sub model of publishing items and subscribing for items can happen in any sequence; a subscriber will receive any data that is already published, and any subsequent updates.
 This avoids any timing issues during system startup.
+
+There is no relationship beween the Provider and Consumers of an item other than a shared understanding of the semantics of the value.
+
+_It is of course possible to add some other relationship, such as a Provider passing sealed values that require the Consumer to know how to ask the Provider for the unsealed value, but that is not the scope or focus of this example._
+
+Providers and Consumers are assigned the right to set or receive each item via Static Sealed Capablities, which means this aspect is fixed at build time and is auditable.
+
+A fourth role is the ability to define a validator for each item, which is called by the broker as part of the update processing.
+The ability to define a validator is defined by a separate Static Sealed Capabilty, and only values which pass the validator are made avaliable to Consumers. 
+
+_This is a pragmatic design tradeoff from a zero-trust model where each Consumer is responsible for validation, but which carries the risk that a Consumer may fail to implement this step._
+_Having validators registered via a capability means that it is possible to to audit that there is exactly one compartment with the right to define a validator for each item, and to ensure that Consumers only recieve validated data._
+_This does however of course mean that the Consumers have to trust the Broker to invoke the validation, and that the validation is correct._
+_It also means that three changes are required to add new configuration items, Publisher, Consumer(s), and Validator_
+
+_Having an explicit validator may be a degree of paranoia not required in all cases; It may for example be considered to accept that the publisher code only every supplies valid values._
+_In this demo we assume that because a publisher is receiving data from the network it is possible that it can be compromised in some way to make it publish invalid values._
+_Validators are registered at startup (to avoid the need to hard code them into the broker) and execute in a sandbox compartment with no capability to 
+
+### Interactions and Trust Model
+Becuase the Broker provides an abstration between Providers, Consumers and Validators all of the interactions can be described in terms of thier interactions with the Broker.
+
+#### Providers
+Providers have one or more WRITE_CONFIG_CAPABILTY that defines the name and maximum size of each item they are allowed to update. They interact with broker ch  
+
+
+
+
+The example has two sources of configuration data:
+* An external system provides values as serialised JSON via a network connection, for example an MQTT client where each value is published to a separate topic.
+In the exmple these items are "config1" and "config2" 
+* An internal provider which updates the value of "config3" in response to some observable internal event.  
+
+
+
 
 By defining static sealed capabilities we can control at build time:
 * Which compartments are allowed to update which items, and the size of items they can supply

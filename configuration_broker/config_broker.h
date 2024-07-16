@@ -74,7 +74,7 @@ struct ConfigItem
  * Set configuration data
  */
 int __cheri_compartment("config_broker")
-  set_config(SObj configWriteCapability, void *data, size_t size);
+  set_config(SObj configWriteCapability, size_t size, __cheri_callback void cb(void  *buffer, void *context), void *context);
 
 /**
  * Read a configuration value.

@@ -3,11 +3,14 @@
 
 // Contributed by Configured Things Ltd
 
+#include "cdefs.h"
 #include <compartment.h>
 #include <debug.hh>
 #include <fail-simulator-on-error.h>
 #include <thread.h>
 #include <tick_macros.h>
+
+#include "validator.h"
 
 // Expose debugging features unconditionally for this compartment.
 using Debug = ConditionalDebug<true, "Publisher">;
@@ -23,12 +26,21 @@ static inline void sleep(const uint32_t mS)
 
 #include "data.h"
 
+
 // Compartment can set config values config1 and config2
 #include "config_broker.h"
 #define CONFIG1 "config1"
 DEFINE_WRITE_CONFIG_CAPABILITY(CONFIG1, sizeof(Data))
 #define CONFIG2 "config2"
 DEFINE_WRITE_CONFIG_CAPABILITY(CONFIG2, sizeof(Data))
+
+//
+// Callback invoked by the Broker when we request to publish a
+// new value
+//
+void __cheri_callback publish(void *dst, void *src) {
+	memcpy(dst, src, sizeof(Data));
+}
 
 // Helper to set some dummy config
 void gen_config(SObj        sealedCap,
@@ -42,18 +54,19 @@ void gen_config(SObj        sealedCap,
 	data->count = count;
 	strlcpy(data->token, token, sizeof(token));
 
-	// Pass a read-only local capability to the broker
+	// Create a read only capability to pass through the broker
+	// as context to the publish callback, to ensure that it can't change
+	// the data or capture the pointer.
 	CHERI::Capability roData{data};
 	roData.permissions() &= {CHERI::Permission::Load};
-	if (set_config(sealedCap, static_cast<void *>(roData), sizeof(Data)) < 0)
+
+	// Call the broker to publish the new value
+	if (set_config(sealedCap, sizeof(Data), publish, static_cast<void *>(roData)) < 0)
 	{
 		Debug::log("Failed to set value for {}", sealedCap);
 	};
 
-	// Change the value after we've passed it to the broker to
-	// show it doesn't have to trust us to not change it.
-	const char *meep = "MeepMeep!";
-	strlcpy(data->token, meep, sizeof(meep));
+	// Free the data value
 	free(data);
 };
 
@@ -62,7 +75,7 @@ void gen_bad_config(SObj sealedCap, const char *itemName)
 {
 	Debug::log("thread {} Sending bad data for {}", thread_id_get(), itemName);
 	void *d = malloc(4);
-	set_config(sealedCap, d, 4);
+	set_config(sealedCap, sizeof(d), publish, d);
 	free(d);
 };
 
@@ -101,3 +114,5 @@ void __cheri_compartment("publisher") bad_dog()
 		gen_bad_config(WRITE_CONFIG_CAPABILITY(CONFIG1), CONFIG1);
 	}
 };
+
+

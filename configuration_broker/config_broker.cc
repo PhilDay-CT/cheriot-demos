@@ -107,15 +107,15 @@ ConfigItem *find_or_create_config(ConfigToken *token)
 FlagLock lockSetConfig;
 
 int __cheri_compartment("config_broker")
-  set_config(SObj sealedCap, void *data, size_t size)
+  set_config(SObj sealedCap, size_t size, __cheri_callback void cb(void* buffer, void *context), void *context)
 {
 	LockGuard g{lockSetConfig};
 
 	Debug::log("thread {} Set config called with {} {} {}",
 	           thread_id_get(),
 	           sealedCap,
-	           data,
-	           size);
+	           size, 
+			   context);
 
 	ConfigToken *token = config_capability_unseal(sealedCap, CONFIG_WRITE);
 	if (token == nullptr)
@@ -132,11 +132,13 @@ int __cheri_compartment("config_broker")
 		return -1;
 	}
 
+	/*
 	if (size > static_cast<size_t>(Capability{data}.bounds()))
 	{
 		Debug::log("size {} > data.bounds() {}", size, data);
 		return -1;
 	}
+	*/
 
 	// Allocate heap space for the new value
 	void *newData = malloc(size);
@@ -146,14 +148,26 @@ int __cheri_compartment("config_broker")
 		return -1;
 	}
 
+	// Create a write only Capability
+	// ****** TBD *****
+	
+	// Invoke the callback to copy the data
+	Debug::log("Calling cb {} {}",newData, context);
+	cb(newData, context);
+
+	// Call the validator
+	// ****** TBD *****
+
 	// Even though we've done the obvious checks were paranoid about
 	// the incomming data so do the copy in a separate compartment
+	/*
 	if (sandbox_copy(data, newData, size) < 0)
 	{
 		Debug::log("Data copy failed from {} to {}", data, newData);
 		free(newData);
 		return -1;
 	};
+	*/
 
 	// Find or create a config structure
 	ConfigItem *c = find_or_create_config(token);
