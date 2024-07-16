@@ -6,14 +6,14 @@
 #include "cdefs.h"
 #include <compartment.h>
 #include <debug.hh>
-#include <fail-simulator-on-error.h>
+//#include <fail-simulator-on-error.h>
 #include <thread.h>
 #include <tick_macros.h>
 
-#include "validator.h"
 
 // Expose debugging features unconditionally for this compartment.
 using Debug = ConditionalDebug<true, "Publisher">;
+
 
 //
 // Helper for the example to create delay in the publisher
@@ -26,8 +26,9 @@ static inline void sleep(const uint32_t mS)
 
 #include "data.h"
 
-
-// Compartment can set config values config1 and config2
+//
+// This compartment can set config values config1 and config2
+//
 #include "config_broker.h"
 #define CONFIG1 "config1"
 DEFINE_WRITE_CONFIG_CAPABILITY(CONFIG1, sizeof(Data))
@@ -36,7 +37,7 @@ DEFINE_WRITE_CONFIG_CAPABILITY(CONFIG2, sizeof(Data))
 
 //
 // Callback invoked by the Broker when we request to publish a
-// new value
+// new value.
 //
 void __cheri_callback publish(void *dst, void *src) {
 	memcpy(dst, src, sizeof(Data));

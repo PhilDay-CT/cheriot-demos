@@ -39,6 +39,9 @@ compartment("subscriber2")
 compartment("subscriber3")
     add_files("subscriber3.cc")
 
+compartment("validator")
+    add_files("validator.cc")
+
 -- Sandbox Compartment
 debugOption("sandbox");
 compartment("sandbox")
@@ -58,6 +61,7 @@ firmware("compartment_config")
     add_deps("subscriber1")
     add_deps("subscriber2")
     add_deps("subscriber3")
+    add_deps("validator")
     add_deps("sandbox")
     add_deps("string")
     on_load(function(target)

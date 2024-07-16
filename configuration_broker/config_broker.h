@@ -8,8 +8,10 @@
 #include "token.h"
 #include <atomic>
 #include <compartment.h>
+#include <locks.hh>
 
-// Interal representaion of a configuration token
+
+// Internal representaion of a configuration token
 struct ConfigToken
 {
 	uint16_t   id;         // id for the capability, assigned on first use
@@ -25,7 +27,7 @@ struct ConfigToken
 	DECLARE_AND_DEFINE_STATIC_SEALED_VALUE(                                    \
 	  struct {                                                                 \
 		  uint16_t   id;                                                       \
-		  size_t     maxSize;                                                  \
+		  size_t     notUsed;                                                  \
 		  const char ConfigId[sizeof(name)];                                   \
 	  },                                                                       \
 	  config_broker,                                                           \
@@ -60,6 +62,28 @@ struct ConfigToken
 	STATIC_SEALED_VALUE(__write_config_capability_##name)
 
 //
+// SEALED CAPABILITY TO ADD A Validator
+//
+#define DEFINE_VALIDATE_CONFIG_CAPABILITY(name)                      \
+                                                                               \
+	DECLARE_AND_DEFINE_STATIC_SEALED_VALUE(                                    \
+	  struct {                                                                 \
+		  uint16_t   id;                                                       \
+		  size_t     notUsed;                                                  \
+		  const char ConfigId[sizeof(name)];                                   \
+	  },                                                                       \
+	  config_broker,                                                           \
+	  ValidateConfigKey,                                                          \
+	  __validate_config_capability_##name,                                        \
+	  0,                                                                       \
+	  0,                                                                    \
+	  name);
+
+#define VALIDATE_CONFIG_CAPABILITY(name)                                          \
+	STATIC_SEALED_VALUE(__validate_config_capability_##name)
+
+
+//
 // Data type for a configuration item.  The version is used
 // as a futex when waiting for updates
 //
@@ -68,6 +92,7 @@ struct ConfigItem
 	std::atomic<uint32_t> version; // version - used as a futex
 	void                 *data;    // value
 	const char           *id;      // id
+	FlagLock             lock;     // lock against concurrent changes
 };
 
 /**
@@ -81,3 +106,8 @@ int __cheri_compartment("config_broker")
  */
 ConfigItem *__cheri_compartment("config_broker")
   get_config(SObj configReadCapability);
+
+
+void __cheri_compartment("config_broker")
+  set_validator(SObj configValidateCapability,__cheri_callback bool cb(void* buffer));
+

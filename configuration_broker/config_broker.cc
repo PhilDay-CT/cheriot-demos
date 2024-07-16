@@ -17,6 +17,7 @@
 
 #include "config_broker.h"
 #include "sandbox.h"
+#include "validator.h"
 
 // Import some useful things from the CHERI namespace.
 using namespace CHERI;
@@ -34,6 +35,9 @@ std::vector<struct ConfigItem *> configData;
 //
 #define CONFIG_WRITE STATIC_SEALING_TYPE(WriteConfigKey)
 #define CONFIG_READ STATIC_SEALING_TYPE(ReadConfigKey)
+#define CONFIG_VALIDATE STATIC_SEALING_TYPE(ValidateConfigKey)
+
+
 
 //
 // unseal a config capability.
@@ -109,14 +113,15 @@ FlagLock lockSetConfig;
 int __cheri_compartment("config_broker")
   set_config(SObj sealedCap, size_t size, __cheri_callback void cb(void* buffer, void *context), void *context)
 {
-	LockGuard g{lockSetConfig};
-
 	Debug::log("thread {} Set config called with {} {} {}",
 	           thread_id_get(),
 	           sealedCap,
 	           size, 
 			   context);
-
+	
+	//
+	// Check that we've been given a valid capability 
+	//
 	ConfigToken *token = config_capability_unseal(sealedCap, CONFIG_WRITE);
 	if (token == nullptr)
 	{
@@ -124,12 +129,34 @@ int __cheri_compartment("config_broker")
 		return -1;
 	}
 
-	// Check the size and data are consistent with the token
-	// and each other.
+	// Check the size is within the allowed range
 	if (size > token->maxSize)
 	{
 		Debug::log("invalid size {} for capability: {}", size, sealedCap);
 		return -1;
+	}
+
+	// Find or create a config structure
+	ConfigItem *c = find_or_create_config(token);
+
+	//
+	// Guard against concurrent updates
+	//
+	LockGuard g{c->lock};
+	//LockGuard g{lockSetConfig};
+	
+	//
+	// We need to load all the validators before we can
+	// accept any updates. Rather than have a thread in
+	// the validator compartment that runs to do that and
+	// then has to hang around (as thread can't exit) we
+	// use the first thread that tries to load a value to
+	// trigger that.
+	//
+	static bool ValidatorsLoaded = false;
+	if (!ValidatorsLoaded) {
+		ValidatorInit();
+		ValidatorsLoaded = true;
 	}
 
 	/*
@@ -169,9 +196,7 @@ int __cheri_compartment("config_broker")
 	};
 	*/
 
-	// Find or create a config structure
-	ConfigItem *c = find_or_create_config(token);
-
+	
 	// Free the old data value.  Any subscribers that received it should
 	// have thier own claim on it if needed
 	if (c->data)
@@ -219,9 +244,30 @@ ConfigItem *__cheri_compartment("config_broker") get_config(SObj sealedCap)
 
 	auto c = find_or_create_config(token);
 
+	//
+	// lock to prevent concurrent set/get on the same 
+	// item
+	LockGuard g{c->lock};
+	
 	// return a read only copy of the item;
 	// Debug::log("was {}", c);
 	CHERI::Capability item{c};
 	item.permissions() &= item.permissions().without(CHERI::Permission::Store);
 	return item;
+}
+
+
+void __cheri_compartment("config_broker") set_validator(SObj sealedCap, __cheri_callback bool cb(void* buffer)) {
+	Debug::log(
+	  "thread {} set validator called with {}", thread_id_get(), sealedCap);
+
+	// Get the calling compartments name from
+	// its sealed capability
+	
+	ConfigToken *token = config_capability_unseal(sealedCap, CONFIG_VALIDATE);
+	Debug::log(
+	  "thread {} unseal gave {}", thread_id_get(), token);
+	
+	// call the callback just for fun
+	cb(nullptr);
 }
