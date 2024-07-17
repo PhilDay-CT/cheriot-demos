@@ -1,6 +1,8 @@
 Safe Configuration Management
 =============================
 
+Contributed by ConfiguredThings Ltd
+
 All system rely on some form of configuration data, and the configuration interface is a significant part of the attack surface.
 Misconfiguration, whether accidential or malicious, is one of the main sources of security vulnerabilites.
 The solution in many cases is to create an often complex trust model around and within the configuration system, where the complexity itself adds to the risk profile. 
@@ -30,8 +32,10 @@ In the demo each item of configuration data has a name, a value, and a version.
 
 There are three main roles:
 * Providers supply the values for one or more items.
-* Consumers react when the value of an iterm changes.
-* The Broker provides an abstaction layer between Providers and Consumers; it holds the current value and maintains the version for each item.  
+* Consumers react when the value of an item changes.
+* The Broker provides an abstaction layer between Providers and Consumers; it holds the current value and maintains the version for each item.
+The Broker is passive, in that it only responds to calls from a Provider or Consumer.
+All operations take place on a thread calling into the Broker, and it does not call though to any other compartments (so it provides isolation between the different roles).  
 
 The model is similar to a pub/sub architecture with a single retained message for each item and a security policy defined at build time through static sealed capabilities.
 The configuration data is declarative so there is no need or value in maintaining a full sequence of updates; each new version is a complete definition of the required configuration item. 
@@ -44,23 +48,82 @@ _It is of course possible to add some other relationship, such as a Provider pas
 
 Providers and Consumers are assigned the right to set or receive each item via Static Sealed Capablities, which means this aspect is fixed at build time and is auditable.
 
-A fourth role is the ability to define a validator for each item, which is called by the broker as part of the update processing.
+A fourth role provides the ability to define a validator for each item, which is called by the broker as part of the update processing.
 The ability to define a validator is defined by a separate Static Sealed Capabilty, and only values which pass the validator are made avaliable to Consumers. 
 
-_This is a pragmatic design tradeoff from a zero-trust model where each Consumer is responsible for validation, but which carries the risk that a Consumer may fail to implement this step._
+_This is a pragmatic design tradeoff from a zero-trust model where each Consumer is responsible for its own validation, but which carries the risk that a Consumer may fail to implement this step._
 _Having validators registered via a capability means that it is possible to to audit that there is exactly one compartment with the right to define a validator for each item, and to ensure that Consumers only recieve validated data._
 _This does however of course mean that the Consumers have to trust the Broker to invoke the validation, and that the validation is correct._
 _It also means that three changes are required to add new configuration items, Publisher, Consumer(s), and Validator_
 
 _Having an explicit validator may be a degree of paranoia not required in all cases; It may for example be considered to accept that the publisher code only every supplies valid values._
 _In this demo we assume that because a publisher is receiving data from the network it is possible that it can be compromised in some way to make it publish invalid values._
-_Validators are registered at startup (to avoid the need to hard code them into the broker) and execute in a sandbox compartment with no capability to 
+_Validators are registered at startup (to avoid the need to hard code them into the broker) and execute in a sandbox compartment with no capability to create or persist state. 
 
 ### Interactions and Trust Model
 Becuase the Broker provides an abstration between Providers, Consumers and Validators all of the interactions can be described in terms of thier interactions with the Broker.
 
+#### Validator Loader
+This acts as kind of initialiser of the broker, in that it's expected to simply register a valiator callback for each config item.
+The validators themselves should be calls into a sandbox compartment, since the data they will examine is untrusted at this point. 
+A validator has to be registered before a Publisher can supply a value. 
+
+The Validator Loader(s) have a VALIDATE_CONFIG_CAPABILITY for each 
+
+<< Need this first since its decribed in the provider>>
+
+
 #### Providers
-Providers have one or more WRITE_CONFIG_CAPABILTY that defines the name and maximum size of each item they are allowed to update. They interact with broker ch  
+Providers have one or more WRITE_CONFIG_CAPABILTY(s) that defines the name and maximum size of each item they are allowed to update. They request the broker to update the value of an item by passing it
+* The sealed capability granting permission to update the item
+* The size of the new item
+* A callback to make the update
+* A context pointer to pass to the callback
+
+It is up to the design of the publisher to design how/whether to parse the data it wants to publish before or during the callback.
+It could, for example, be fully parsed into the required form and passed as the context value to be simply copied by the callback.
+Or the callback could perform any required processing based on the context.
+If multiple theads can exist in the Publisher then clearly the normal attention must be appled to any used of globals.
+In either case where the data has come from an extenal source, such as a network message, then the parsing should itself be perfomed in a sandbox compartment to protect the publisher (the demo includes an example of this).  
+
+Assuming the capability and requested size are valid, the broker will allocate the required space from the heap and pass a write-only capability for the new heap allocation to the callback.
+After the callback has completed the broker will invoke the registered validator for the item against the new data, and if that is sucessful notify any subscribers by updating the version and freeing the heap associated with the previous version.  
+
+The extent to which the Broker trusts the Provider is encapulated in the sealed capability, so it is only "trusting" something which can be audited at build time.
+* Only a Provider with the sealed capability can request an update.  
+* The Provider can not make the Broker consume more of its heap that the 2x the size defined in the capability (current version + new version).
+* The Broker creates a copy of the data so it does not have to trust the publisher not to make subsequent direct changes.
+* The Broker protects itself against multiple threads trying to update the same value.  
+The Publisher's callback is given a non-global capability to the Broker's heap, so it only access during the callback.
+* All data access happens in the Publisher's compartment during the callback, so any violations do not affect the Broker.
+
+The Publisher is trusting the Broker in the following ways:
+* That it will only make the data available to compartments that have the corresponding sealed read capability [Confidentiality]
+* That the broker will not mutate the data [Integrity]
+* That the broker will not block it's thead [Availability]
+
+#### Subscribers
+Subscribers have one or more READ_CONFIG_CAPABILITY(s) that define which items they are allowed to receive.
+
+Subscribers can request the current value at any time by simply passing their capability to the Broker.
+In return they receive three values:
+* A read only capability to the heap allocation for the current data value (which maybe null if it hasn't been set yet)
+* The current version
+* A pointer to a futex they can wait on for the version to change. 
+
+The normal pattern is to have a thread which makes an intital call to get as a minimum the current version and futex to wait on, process the current value (if any) and then wait for changes. 
+
+As with the Provider the extent to which the Broker trusts a subscriber is encapulated in the sealed capability, so it is only "trusting" something which can be audited at build time.
+* Only a Subscriber with the sealed capability can request an item.
+* The subscriber is only given a read capability to the item, so it can not mutate it.
+* The subsciber can not affect the Brokers heap quota, but it can add a claim against its own quota if needed.
+
+The Subscriber is trusting Broker in the following ways:
+* That it will only provide values that have been validated [Integrity]
+* That is has not changed the value supplied by the Publisher [Integrity]
+* That it will not block it's thread [Availability]
+* That it will be notified when new versions are available [Integrity, Availability]
+
 
 
 

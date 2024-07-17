@@ -32,6 +32,7 @@ struct InternalConfigitem
 	void                 *data;    // value
 	const char           *id;      // id
 	FlagLock             lock;     // lock to prevent concurrent changes
+	bool                 __cheri_callback (*validator)(void *); // validator method
 };
 
 //
@@ -145,15 +146,6 @@ int __cheri_compartment("config_broker")
 		return -1;
 	}
 
-	// Find or create a config structure
-	InternalConfigitem *c = find_or_create_config(token);
-
-	//
-	// Guard against concurrent updates
-	//
-	LockGuard g{c->lock};
-	//LockGuard g{lockSetConfig};
-	
 	//
 	// We need to load all the validators before we can
 	// accept any updates. Rather than have a thread in
@@ -167,6 +159,17 @@ int __cheri_compartment("config_broker")
 		ValidatorInit();
 		ValidatorsLoaded = true;
 	}
+
+	// Find or create a config structure
+	InternalConfigitem *c = find_or_create_config(token);
+
+	//
+	// Guard against concurrent updates
+	//
+	LockGuard g{c->lock};
+	//LockGuard g{lockSetConfig};
+	
+	
 
 	/*
 	if (size > static_cast<size_t>(Capability{data}.bounds()))
@@ -188,24 +191,14 @@ int __cheri_compartment("config_broker")
 	// ****** TBD *****
 	
 	// Invoke the callback to copy the data
-	Debug::log("Calling cb {} {}",newData, context);
 	cb(newData, context);
 
 	// Call the validator
-	// ****** TBD *****
-
-	// Even though we've done the obvious checks were paranoid about
-	// the incomming data so do the copy in a separate compartment
-	/*
-	if (sandbox_copy(data, newData, size) < 0)
-	{
-		Debug::log("Data copy failed from {} to {}", data, newData);
-		free(newData);
+	if (!c->validator(newData)) {
+		Debug::log("Validator failed for {}", token->ConfigId);
 		return -1;
-	};
-	*/
+	}
 
-	
 	// Free the old data value.  Any subscribers that received it should
 	// have thier own claim on it if needed
 	if (c->data)
@@ -295,6 +288,15 @@ void __cheri_compartment("config_broker") set_validator(SObj sealedCap, __cheri_
 	Debug::log(
 	  "thread {} unseal gave {}", thread_id_get(), token);
 	
-	// call the callback just for fun
-	cb(nullptr);
+	if (token == nullptr)
+	{	
+		// Didn't get passed a valid Read Capability
+	 	Debug::log("Invalid capability {}", sealedCap);
+	 	return;
+	}
+
+	auto c = find_or_create_config(token);
+	c->validator = cb;
+	
+	return;
 }

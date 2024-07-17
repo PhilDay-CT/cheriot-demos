@@ -24,24 +24,30 @@ static inline void sleep(const uint32_t mS)
 	thread_sleep(&t1, ThreadSleepNoEarlyWake);
 }
 
-#include "data.h"
+#include "logger/logger.h"
 
 //
 // This compartment can set config values config1 and config2
 //
 #include "config_broker.h"
 #define CONFIG1 "config1"
-DEFINE_WRITE_CONFIG_CAPABILITY(CONFIG1, sizeof(Data))
+DEFINE_WRITE_CONFIG_CAPABILITY(CONFIG1, sizeof(LoggerConfig))
 #define CONFIG2 "config2"
-DEFINE_WRITE_CONFIG_CAPABILITY(CONFIG2, sizeof(Data))
+DEFINE_WRITE_CONFIG_CAPABILITY(CONFIG2, sizeof(LoggerConfig))
 
 //
 // Callback invoked by the Broker when we request to publish a
 // new value.
 //
 void __cheri_callback publish(void *dst, void *src) {
-	memcpy(dst, src, sizeof(Data));
+	memcpy(dst, src, sizeof(LoggerConfig));
 }
+
+LoggerConfig logger = {
+	"100.102.103.104",
+	666,
+	LogLevel::Debug
+};
 
 // Helper to set some dummy config
 void gen_config(SObj        sealedCap,
@@ -51,24 +57,27 @@ void gen_config(SObj        sealedCap,
 {
 	Debug::log("thread {} Set {}", thread_id_get(), itemName);
 
-	Data *data  = static_cast<Data *>(malloc(sizeof(Data)));
-	data->count = count;
-	strlcpy(data->token, token, sizeof(token));
+	static uint8_t level = 0;	
+	if (++level > 6) {
+		level = 0;
+	}
+
+	logger.level = (LogLevel)level;
 
 	// Create a read only capability to pass through the broker
 	// as context to the publish callback, to ensure that it can't change
 	// the data or capture the pointer.
-	CHERI::Capability roData{data};
+	CHERI::Capability roData{&logger};
 	roData.permissions() &= {CHERI::Permission::Load};
 
 	// Call the broker to publish the new value
-	if (set_config(sealedCap, sizeof(Data), publish, static_cast<void *>(roData)) < 0)
+	if (set_config(sealedCap, sizeof(LoggerConfig), publish, static_cast<void *>(roData)) < 0)
 	{
 		Debug::log("Failed to set value for {}", sealedCap);
 	};
 
 	// Free the data value
-	free(data);
+	//free(data);
 };
 
 // Helper to generat invalid data
@@ -100,10 +109,6 @@ void __cheri_compartment("publisher") init()
 		// Check we're not leaking data;
 		// Debug::log("heap quota available: {}",
 		//   heap_quota_remaining(MALLOC_CAPABILITY));
-
-		// Give the compartments a chance to print their
-		// config values from timers
-		// sleep(3000);
 	}
 };
 

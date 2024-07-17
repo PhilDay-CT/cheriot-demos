@@ -21,6 +21,12 @@ library("config_data")
     set_default(false)
     add_files("data.cc")     
 
+-- Library for logger
+library("logger")
+    set_default(false)
+    add_files("logger/lib.cc")     
+
+
 -- Configuration Broker
 debugOption("config_broker");
 compartment("config_broker")
@@ -56,6 +62,7 @@ firmware("compartment_config")
     -- Both compartments require memcpy
     add_deps("freestanding", "debug")
     add_deps("config_data")
+    add_deps("logger")
     add_deps("publisher")
     add_deps("config_broker")
     --add_deps("subscriber1")
@@ -72,7 +79,7 @@ firmware("compartment_config")
                 priority = 2,
                 entry_point = "init",
                 stack_size = 0x500,
-                trusted_stack_frames = 4
+                trusted_stack_frames = 8
             },
         --    {
         --        compartment = "subscriber1",

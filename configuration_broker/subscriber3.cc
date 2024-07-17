@@ -21,52 +21,26 @@ DEFINE_READ_CONFIG_CAPABILITY(CONFIG2)
 // Expose debugging features unconditionally for this compartment.
 using Debug = ConditionalDebug<true, "Subscriber #3">;
 
+#include "logger/logger.h"
+
 #include "data.h"
-#include "sandbox.h"
 
 // Keep track of the items and their last version
 struct Config
 {
-	SObj        capability; // Sealed Read Capability
-	ConfigItem  item;       // item from the broker
-	Data        *data;
+	SObj        capability;      // Sealed Read Capability
+	uint32_t    version;
+	std::atomic<uint32_t> *versionFutex;  
+	void        (*handler)(void *); // Handler to call
 };
 
-//
-// Process a change in a configurarion value
-//   configData is a pointer to the current value
-//   item is the new, untrusted and possibily invaild new version
-//
-void process_update(Data **configData, ConfigItem *item)
-{
-	if (item->data != nullptr)
-	{
-		if (sandbox_validate(item->data) < 0)
-		{
-			Debug::log("thread {} Validation failed for {}",
-			           thread_id_get(),
-			           item->data);
-		}
-		else
-		{
-			// New value is valid - release our claim on the old value
-			if (*configData != nullptr)
-			{
-				free(*configData);
-			}
-			*configData = static_cast<Data *>(item->data);
+void logger_handler(void *d) {
+	Debug::log("logger_handler called");
+	logger_config((LoggerConfig *)d);
+}
 
-			// Claim the new value so we keep access to it even if
-			// the next value from the broker is invalid
-			heap_claim(MALLOC_CAPABILITY, *configData);
-
-			// Act on the new value
-			;
-		}
-	}
-
-	// Print the current value
-	print_config(item->id, *configData);
+void led_handler(void *d) {
+	Debug::log("led_handler called");
 }
 
 //
@@ -76,8 +50,8 @@ void __cheri_compartment("subscriber3") init()
 {
 	// List of configuration items we are tracking
 	Config configItems[] = {
-	  {READ_CONFIG_CAPABILITY(CONFIG1), nullptr, 0, nullptr},
-	  {READ_CONFIG_CAPABILITY(CONFIG2), nullptr, 0, nullptr},
+	  {READ_CONFIG_CAPABILITY(CONFIG1), 0, nullptr, logger_handler},
+	  {READ_CONFIG_CAPABILITY(CONFIG2), 0, nullptr, led_handler},
 	};
 
 	auto numOfItems = sizeof(configItems) / sizeof(configItems[0]);
@@ -96,19 +70,28 @@ void __cheri_compartment("subscriber3") init()
 	// and the version & futex to wait on
 	for (auto &c : configItems)
 	{
-		c.item = get_config(c.capability);
-		if (c.item.versionFutex == nullptr)
+		auto item = get_config(c.capability);
+		if (item.versionFutex == nullptr)
 		{
 			Debug::log(
 			  "thread {} failed to get {}", thread_id_get(), c.capability);
 			return;
 		}
 
+		c.version = item.version;
+		c.versionFutex = item.versionFutex;
+
 		Debug::log("thread {} got version:{} of {}",
 		           thread_id_get(),
-		           c.item.version,
-		           c.item.id);
-		process_update(&c.data, &c.item);
+		           c.version,
+		           item.id);
+		if (item.data != nullptr) {
+			c.handler(item.data);
+		}
+		else
+		{
+			Debug::log("No data yet for {}", item.id);
+		}	
 	}
 
 	// Loop waiting for config changes
@@ -119,9 +102,9 @@ void __cheri_compartment("subscriber3") init()
 
 		for (auto i = 0; i < numOfItems; i++)
 		{
-			events[i] = {configItems[i].item.versionFutex,
+			events[i] = {configItems[i].versionFutex,
 			             EventWaiterFutex,
-			             configItems[i].item.version};
+			             configItems[i].version};
 		}
 
 		Timeout t{MS_TO_TICKS(10000)};
@@ -133,13 +116,14 @@ void __cheri_compartment("subscriber3") init()
 				if (events[i].value == 1)
 				{
 					auto c     = &configItems[i];
-					c->item    = get_config(c->capability);
+					auto item  = get_config(c->capability);
 					Debug::log("thread {} got version:{} of {}",
 					           thread_id_get(),
-					           c->item.version,
-					           c->item.id);
+					           item.version,
+					           item.id);
 
-					process_update(&c->data, &c->item);
+					c->version = item.version;
+					c->handler(item.data);
 				}
 			}
 		}
