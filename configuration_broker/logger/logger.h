@@ -6,31 +6,31 @@
 #include <cstdlib>
 
 // Mocked example of configuration data for a remote
-// logging service  
+// logging service
 
 enum class LogLevel
 {
 	Debug = 0,
-	Info = 1,
-    Warn = 2,
-    Error = 3
+	Info  = 1,
+	Warn  = 2,
+	Error = 3
 };
 
-struct Host {
-	char     address[16];  // ipv4 address of host
-	uint16_t port;         // port on host
+struct Host
+{
+	char     address[16]; // ipv4 address of host
+	uint16_t port;        // port on host
 };
 
 struct LoggerConfig
 {
-	Host     host;	 // Details of the host
-	LogLevel level;  // required logging level
+	Host     host;  // Details of the host
+	LogLevel level; // required logging level
 };
 
 // Function which nominally configures the logger
-// In this demo it just prints the config value 
+// In this demo it just prints the config value
 void __cheri_libcall logger_config(void *config);
 
 // Function which validates a logger configuration change
 bool __cheri_libcall validate_logger_config(void *c);
-

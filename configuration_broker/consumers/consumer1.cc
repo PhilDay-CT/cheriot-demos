@@ -8,18 +8,18 @@
 #include <thread.h>
 
 // Define a sealed capability that gives this compartment
-// read access to configuration data "config1" and "config2"
-#include "config_broker.h"
-#include "token.h"
-#define CONFIG1 "config1"
-DEFINE_READ_CONFIG_CAPABILITY(CONFIG1)
-#define CONFIG2 "config2"
-DEFINE_READ_CONFIG_CAPABILITY(CONFIG2)
+// read access to configuration data "logger" and "rgb_led"
+#include "../config_broker/config_broker.h"
+#include <token.h>
+#define LOGGER_CONFIG "logger"
+DEFINE_READ_CONFIG_CAPABILITY(LOGGER_CONFIG)
+#define RGB_LED_CONFIG "rgb_led"
+DEFINE_READ_CONFIG_CAPABILITY(RGB_LED_CONFIG)
 
 // Expose debugging features unconditionally for this compartment.
-using Debug = ConditionalDebug<true, "Subscriber #3">;
+using Debug = ConditionalDebug<true, "Consumner #1">;
 
-#include "logger/logger.h"
+#include "../logger/logger.h"
 
 // Keep track of the items and their last version
 struct Config
@@ -41,12 +41,12 @@ void led_handler(void *d) {
 //
 // Thread entry point.
 //
-void __cheri_compartment("subscriber3") init()
+void __cheri_compartment("consumer1") init()
 {
 	// List of configuration items we are tracking
 	Config configItems[] = {
-	  {READ_CONFIG_CAPABILITY(CONFIG1), 0, nullptr, logger_handler},
-	  {READ_CONFIG_CAPABILITY(CONFIG2), 0, nullptr, led_handler},
+	  {READ_CONFIG_CAPABILITY(LOGGER_CONFIG), 0, nullptr, logger_handler},
+	  {READ_CONFIG_CAPABILITY(RGB_LED_CONFIG), 0, nullptr, led_handler},
 	};
 
 	auto numOfItems = sizeof(configItems) / sizeof(configItems[0]);

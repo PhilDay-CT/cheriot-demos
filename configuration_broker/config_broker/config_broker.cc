@@ -1,7 +1,5 @@
-// Copyright Microsoft and CHERIoT Contributors.
+// Copyright Configured Things and CHERIoT Contributors.
 // SPDX-License-Identifier: MIT
-
-// Contributed by Configured Things Ltd
 
 #include "cdefs.h"
 #include "cheri.hh"
@@ -16,7 +14,7 @@
 #include <vector>
 
 #include "config_broker.h"
-#include "validator/validator.h"
+#include "../validator/validator.h"
 
 // Import some useful things from the CHERI namespace.
 using namespace CHERI;

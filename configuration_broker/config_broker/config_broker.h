@@ -1,7 +1,5 @@
-// Copyright Microsoft and CHERIoT Contributors.
+// Copyright Configured Things and CHERIoT Contributors.
 // SPDX-License-Identifier: MIT
-
-// Contributed by Configured Things Ltd
 
 #include "cdefs.h"
 #include "compartment-macros.h"

@@ -29,46 +29,37 @@ compartment("mqtt")
 debugOption("config_broker")
 compartment("config_broker")
     add_rules("cheriot.component-debug")
-    add_files("config_broker.cc")
+    add_files("config_broker/config_broker.cc")
+
+-- Validator
+compartment("validator")
+    add_files("validator/validator.cc")
 
 -- Configuration Publisher
-debugOption("publisher")
 compartment("publisher")
-    add_rules("cheriot.component-debug")
     add_files("publisher/publisher.cc")
 
 -- Configuration JSON parser sandbox
 compartment("parser")
-    add_rules("cheriot.component-debug")
     add_files("parser/parser.cc")
     add_files("parser/core_json.cc")
 
--- Compartments to be configured
---compartment("subscriber1")
---    add_files("subscriber1.cc")
---compartment("subscriber2")
---    add_files("subscriber2.cc")
-compartment("subscriber3")
-    add_files("subscriber3.cc")
+-- Consumners
+compartment("consumer1")
+    add_files("consumers/consumer1.cc")
 
-compartment("validator")
-    add_files("validator/validator.cc")
 
 
 -- Firmware image for the example.
 firmware("compartment_config")
-    -- Both compartments require memcpy
     add_deps("freestanding", "debug", "string")
-    --add_deps("config_data")
     add_deps("logger")
     add_deps("mqtt")
     add_deps("publisher")
     add_deps("parser")
     add_deps("config_broker")
-    --add_deps("subscriber1")
-    --add_deps("subscriber2")
-    add_deps("subscriber3")
     add_deps("validator")
+    add_deps("consumer1")
     on_load(function(target)
         target:values_set("board", "$(board)")
         target:values_set("threads", {
@@ -79,22 +70,8 @@ firmware("compartment_config")
                 stack_size = 0x600,
                 trusted_stack_frames = 8
             },
-        --    {
-        --        compartment = "subscriber1",
-        --        priority = 3,
-        --        entry_point = "init",
-        --        stack_size = 0x500,
-        --        trusted_stack_frames = 4
-        --    },
-        --    {
-        --        compartment = "subscriber2",
-        --        priority = 1,
-        --        entry_point = "init",
-        --        stack_size = 0x500,
-        --        trusted_stack_frames = 4
-        --    },
             {
-                compartment = "subscriber3",
+                compartment = "consumer1",
                 priority = 1,
                 entry_point = "init",
                 stack_size = 0x500,
