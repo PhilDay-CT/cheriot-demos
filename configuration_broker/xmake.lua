@@ -1,7 +1,6 @@
--- Copyright Microsoft and CHERIoT Contributors.
+-- Copyright Configred Things and CHERIoT Contributors.
 -- SPDX-License-Identifier: MIT
 
--- Contributed by Configured Things Ltd
 
 set_project("CHERIoT Compartmentalised Config")
 sdkdir = "../cheriot-rtos/sdk"
@@ -9,14 +8,13 @@ includes(sdkdir)
 set_toolchains("cheriot-clang")
 
 -- Support libraries
--- Support libraries
 includes(path.join(sdkdir, "lib/freestanding"),
          path.join(sdkdir, "lib/string"))
 
 option("board")
     set_default("ibex-safe-simulator")
 
--- Library for Mocked logger
+-- Library for Mocked logger service
 library("logger")
     set_default(false)
     add_files("logger/logger.cc")     
@@ -44,11 +42,9 @@ compartment("parser")
     add_files("parser/parser.cc")
     add_files("parser/core_json.cc")
 
--- Consumners
+-- Consumers
 compartment("consumer1")
     add_files("consumers/consumer1.cc")
-
-
 
 -- Firmware image for the example.
 firmware("compartment_config")
