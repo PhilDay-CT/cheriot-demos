@@ -17,16 +17,6 @@
 // Expose debugging features unconditionally for this compartment.
 using Debug = ConditionalDebug<true, "Parser">;
 
-int atoi(const char *str, size_t len)
-{
-	int acc = 0;
-	for (int i = 0; i < len && str && isdigit(*str); ++str)
-	{
-		acc *= 10;
-		acc += *str - 0x30;
-	}
-	return acc;
-}
 //
 // Helper function to extract a string value
 //
@@ -72,8 +62,26 @@ bool getNumber(const char *json, const char *key, uint16_t *dst)
 
 	if (result == JSONSuccess)
 	{
-		*dst = atoi(value, valueLength);
-		return true;
+        bool isNumber = true;
+        int acc = 0;
+        char *str = value;
+	    for (int i = 0; i < valueLength && str; i++, str++)
+	    {
+            if (isNumber && isdigit(*str))
+            {
+                isNumber = true;
+		        acc *= 10;
+		        acc += *str - 0x30;
+            } else {
+                isNumber = false;    
+            }
+	    }
+
+        if (isNumber)
+        {
+		    *dst = acc;
+        }    
+		return isNumber;
 	}
 	else
 	{
@@ -97,7 +105,7 @@ int __cheri_compartment("parser")
 	result = JSON_Validate(json, strlen(json));
 	if (result != JSONSuccess)
 	{
-		Debug::log("Invalid JSON {}", json);
+		Debug::log("thread {} Invalid JSON {}", thread_id_get(), json);
 		return -1;
 	}
 

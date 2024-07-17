@@ -93,7 +93,7 @@ void update_logger_config(SObj sealedWriteCap, const char *data)
 
 	if (parseLoggerConfig(data, woConfig) < 0)
 	{
-		Debug::log("thread {} paser failed", thread_id_get());
+		Debug::log("thread {} parser failed", thread_id_get());
 		return;
 	}
 

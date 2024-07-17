@@ -34,7 +34,7 @@ const Message Messages[] = {
   {"rgbled", "{\"1\": {\"red\": 200}"},
 
   {"logger",
-   "{\"host\": {\"address\":\"100.101.102.103\",\"port\":666},\"level\":3}"},
+   "{\"host\": {\"address\":\"100.101.102.103\",\"port\":\"xxx\"},\"level\":3}"},
 
   {"logger",
    "{\"host\": {\"address\":\"100.101.102.103\",\"port\":666},\"level\":4}"},
