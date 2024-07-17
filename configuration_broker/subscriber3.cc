@@ -28,9 +28,8 @@ using Debug = ConditionalDebug<true, "Subscriber #3">;
 struct Config
 {
 	SObj        capability; // Sealed Read Capability
-	ConfigItem *item;       // item from the broker
-	uint32_t    version;    // last version from broker
-	Data       *data;       // last valid config data
+	ConfigItem  item;       // item from the broker
+	Data        *data;
 };
 
 //
@@ -98,19 +97,18 @@ void __cheri_compartment("subscriber3") init()
 	for (auto &c : configItems)
 	{
 		c.item = get_config(c.capability);
-		if (c.item == nullptr)
+		if (c.item.versionFutex == nullptr)
 		{
 			Debug::log(
-			  "thread {} failed to get {}", thread_id_get(), c.item->id);
+			  "thread {} failed to get {}", thread_id_get(), c.capability);
 			return;
 		}
 
-		c.version = c.item->version.load();
 		Debug::log("thread {} got version:{} of {}",
 		           thread_id_get(),
-		           c.version,
-		           c.item->id);
-		process_update(&c.data, c.item);
+		           c.item.version,
+		           c.item.id);
+		process_update(&c.data, &c.item);
 	}
 
 	// Loop waiting for config changes
@@ -121,9 +119,9 @@ void __cheri_compartment("subscriber3") init()
 
 		for (auto i = 0; i < numOfItems; i++)
 		{
-			events[i] = {&(configItems[i].item->version),
+			events[i] = {configItems[i].item.versionFutex,
 			             EventWaiterFutex,
-			             configItems[i].version};
+			             configItems[i].item.version};
 		}
 
 		Timeout t{MS_TO_TICKS(10000)};
@@ -136,13 +134,12 @@ void __cheri_compartment("subscriber3") init()
 				{
 					auto c     = &configItems[i];
 					c->item    = get_config(c->capability);
-					c->version = c->item->version.load();
 					Debug::log("thread {} got version:{} of {}",
 					           thread_id_get(),
-					           c->version,
-					           c->item->id);
+					           c->item.version,
+					           c->item.id);
 
-					process_update(&c->data, c->item);
+					process_update(&c->data, &c->item);
 				}
 			}
 		}

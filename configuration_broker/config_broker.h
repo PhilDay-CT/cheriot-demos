@@ -84,15 +84,14 @@ struct ConfigToken
 
 
 //
-// Data type for a configuration item.  The version is used
-// as a futex when waiting for updates
+// Data type for a configuration item.
 //
 struct ConfigItem
 {
-	std::atomic<uint32_t> version; // version - used as a futex
-	void                 *data;    // value
-	const char           *id;      // id
-	FlagLock             lock;     // lock against concurrent changes
+	const char   *id;                    // id
+	uint32_t     version;                // version
+	void         *data;                  // value
+	std::atomic<uint32_t> *versionFutex; // Futex to wait for version change
 };
 
 /**
@@ -104,7 +103,7 @@ int __cheri_compartment("config_broker")
 /**
  * Read a configuration value.
  */
-ConfigItem *__cheri_compartment("config_broker")
+ConfigItem __cheri_compartment("config_broker")
   get_config(SObj configReadCapability);
 
 

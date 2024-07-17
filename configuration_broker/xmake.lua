@@ -32,10 +32,10 @@ compartment("publisher")
     add_files("publisher.cc")
 
 -- Compartments to be configured
-compartment("subscriber1")
-    add_files("subscriber1.cc")
-compartment("subscriber2")
-    add_files("subscriber2.cc")
+--compartment("subscriber1")
+--    add_files("subscriber1.cc")
+--compartment("subscriber2")
+--    add_files("subscriber2.cc")
 compartment("subscriber3")
     add_files("subscriber3.cc")
 
@@ -58,8 +58,8 @@ firmware("compartment_config")
     add_deps("config_data")
     add_deps("publisher")
     add_deps("config_broker")
-    add_deps("subscriber1")
-    add_deps("subscriber2")
+    --add_deps("subscriber1")
+    --add_deps("subscriber2")
     add_deps("subscriber3")
     add_deps("validator")
     add_deps("sandbox")
@@ -74,20 +74,20 @@ firmware("compartment_config")
                 stack_size = 0x500,
                 trusted_stack_frames = 4
             },
-            {
-                compartment = "subscriber1",
-                priority = 3,
-                entry_point = "init",
-                stack_size = 0x500,
-                trusted_stack_frames = 4
-            },
-            {
-                compartment = "subscriber2",
-                priority = 1,
-                entry_point = "init",
-                stack_size = 0x500,
-                trusted_stack_frames = 4
-            },
+        --    {
+        --        compartment = "subscriber1",
+        --        priority = 3,
+        --        entry_point = "init",
+        --        stack_size = 0x500,
+        --        trusted_stack_frames = 4
+        --    },
+        --    {
+        --        compartment = "subscriber2",
+        --        priority = 1,
+        --        entry_point = "init",
+        --        stack_size = 0x500,
+        --        trusted_stack_frames = 4
+        --    },
             {
                 compartment = "subscriber3",
                 priority = 1,

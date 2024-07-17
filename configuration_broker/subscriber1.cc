@@ -70,36 +70,40 @@ void __cheri_compartment("subscriber1") init()
 	// Initial read of the config to get the current value (if any)
 	// and the version & futex to wait on
 	auto config = get_config(READ_CONFIG_CAPABILITY(CONFIG_ITEM_NAME));
-	if (config == nullptr)
+	
+	// If our capabilty was invalid then we won't have got a valid
+	// versionFutex.
+	if (config.versionFutex == nullptr)
 	{
-		Debug::log(
-		  "thread {} failed to get {}", thread_id_get(), CONFIG_ITEM_NAME);
-		return;
+	 	Debug::log(
+	 	  "thread {} failed to get {}", thread_id_get(), CONFIG_ITEM_NAME);
+	 	return;
 	}
 
-	auto configVersion = config->version.load();
 	Debug::log("thread {} got version:{} of {}",
 	           thread_id_get(),
-	           configVersion,
-	           config->id);
-	process_update(config);
+	           config.version,
+	           config.id);
+
+	uint32_t lastVersion = config.version;
+
+	process_update(&config);
 
 	// Loop waiting for a change in version of the config item
 	while (true)
 	{
-		config->version.wait(configVersion);
+		config.versionFutex->wait(lastVersion);
 
+		// Version has changed, so get the new version
 		auto config   = get_config(READ_CONFIG_CAPABILITY(CONFIG_ITEM_NAME));
-		configVersion = config->version.load();
+		lastVersion = config.version;
+
 		Debug::log("thread {} got version:{} of {}",
-		           thread_id_get(),
-		           configVersion,
-		           config->id);
+	           thread_id_get(),
+	           config.version,
+	           config.id);
 
-		process_update(config);
-
-		// Check we're not leaking data;
-		// Debug::log("heap quota available: {}",
-		//   heap_quota_remaining(MALLOC_CAPABILITY));
+		// process the new data
+		process_update(&config);
 	}
 }

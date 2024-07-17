@@ -25,10 +25,19 @@ using namespace CHERI;
 // Expose debugging features unconditionally for this compartment.
 using Debug = ConditionalDebug<DEBUG_CONFIG_BROKER, "Config Broker">;
 
+// Internal view of a Config Item
+struct InternalConfigitem
+{
+	std::atomic<uint32_t> version; // version - used as a futex
+	void                 *data;    // value
+	const char           *id;      // id
+	FlagLock             lock;     // lock to prevent concurrent changes
+};
+
 //
 // Set of config data items.
 //
-std::vector<struct ConfigItem *> configData;
+std::vector<struct InternalConfigitem *> configData;
 
 //
 // Sealing Types
@@ -75,7 +84,7 @@ ConfigToken *config_capability_unseal(SObj sealedCap, SKey key)
 //
 FlagLock lockFindOrCreate;
 
-ConfigItem *find_or_create_config(ConfigToken *token)
+InternalConfigitem *find_or_create_config(ConfigToken *token)
 {
 	LockGuard g{lockFindOrCreate};
 
@@ -88,7 +97,7 @@ ConfigItem *find_or_create_config(ConfigToken *token)
 	}
 
 	// Allocate a Config object
-	ConfigItem *c = static_cast<ConfigItem *>(malloc(sizeof(ConfigItem)));
+	InternalConfigitem *c = static_cast<InternalConfigitem *>(malloc(sizeof(InternalConfigitem)));
 
 	// Use the ConfigId from the token that triggered the creation
 	// as the name value, since sealed objects are guaranteed not
@@ -137,7 +146,7 @@ int __cheri_compartment("config_broker")
 	}
 
 	// Find or create a config structure
-	ConfigItem *c = find_or_create_config(token);
+	InternalConfigitem *c = find_or_create_config(token);
 
 	//
 	// Guard against concurrent updates
@@ -225,10 +234,12 @@ int __cheri_compartment("config_broker")
 //
 // Get the current value of a Configuration item.  The data
 // member will be nullptr if the item has not yet been set.
-// The version member can be used as a futex to wait for changes.
 //
-ConfigItem *__cheri_compartment("config_broker") get_config(SObj sealedCap)
+ConfigItem __cheri_compartment("config_broker") get_config(SObj sealedCap)
 {
+	// Object to return.  Stack is initialised to zeros
+	ConfigItem result;
+
 	Debug::log(
 	  "thread {} get_config called with {}", thread_id_get(), sealedCap);
 
@@ -237,9 +248,10 @@ ConfigItem *__cheri_compartment("config_broker") get_config(SObj sealedCap)
 	ConfigToken *token = config_capability_unseal(sealedCap, CONFIG_READ);
 
 	if (token == nullptr)
-	{
-		Debug::log("Invalid capability {}", sealedCap);
-		return nullptr;
+	{	
+		// Didn't get passed a vaild Read Capability
+	 	Debug::log("Invalid capability {}", sealedCap);
+	 	return result;
 	}
 
 	auto c = find_or_create_config(token);
@@ -249,11 +261,26 @@ ConfigItem *__cheri_compartment("config_broker") get_config(SObj sealedCap)
 	// item
 	LockGuard g{c->lock};
 	
-	// return a read only copy of the item;
-	// Debug::log("was {}", c);
-	CHERI::Capability item{c};
-	item.permissions() &= item.permissions().without(CHERI::Permission::Store);
-	return item;
+	//
+	// Populate the return object.
+	//
+	
+	// id is a read only pointer as its static
+	result.id = c->id; 
+	
+	// Provide the version value at this point in time 	
+	result.version = c->version.load();
+
+	// Data is already a read only pointer
+	result.data = c->data;
+
+	// Create a readonly pointer to the version futex
+	CHERI::Capability roFutex{&c->version};
+	roFutex.permissions() &=
+	  roFutex.permissions().without(CHERI::Permission::Store);
+	result.versionFutex = roFutex;
+
+	return result;
 }
 
 
