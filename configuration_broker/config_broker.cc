@@ -16,13 +16,12 @@
 #include <vector>
 
 #include "config_broker.h"
-#include "sandbox.h"
-#include "validator.h"
+#include "validator/validator.h"
 
 // Import some useful things from the CHERI namespace.
 using namespace CHERI;
 
-// Expose debugging features unconditionally for this compartment.
+// Debuging can be enable with "xmake --config --debug-config_broker=true"
 using Debug = ConditionalDebug<DEBUG_CONFIG_BROKER, "Config Broker">;
 
 // Internal view of a Config Item
@@ -187,11 +186,12 @@ int __cheri_compartment("config_broker")
 		return -1;
 	}
 
-	// Create a write only Capability
-	// ****** TBD *****
+	// Create a write only Capability to pass to the callback
+	CHERI::Capability woNewData{newData};
+	woNewData.permissions() &= {CHERI::Permission::Store};
 	
 	// Invoke the callback to copy the data
-	cb(newData, context);
+	cb(woNewData, context);
 
 	// Call the validator
 	if (!c->validator(newData)) {

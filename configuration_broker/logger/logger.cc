@@ -1,7 +1,5 @@
-// Copyright Microsoft and CHERIoT Contributors.
+// Copyright Configured Things and CHERIoT Contributors.
 // SPDX-License-Identifier: MIT
-
-// Contributed by Configured Things Ltd
 
 #include <debug.hh>
 #include <thread.h>
@@ -24,8 +22,8 @@ void __cheri_libcall logger_config(void *c)
 	LoggerConfig *config = (LoggerConfig *)c; 
 	Debug::log("thread {} host: {} port: {} level: {}",
 		           thread_id_get(),
-		           (const char *)config->ipv4,
-		           config->port,
+		           (const char *)config->host.address,
+		           (int16_t)config->host.port,
 		           config->level);
 }
 
@@ -37,7 +35,7 @@ bool __cheri_libcall validate_logger_config(void *untrusted) {
 
 	// Check the bounds and that we can read
 	if (!check_pointer<PermissionSet{Permission::Load}>(untrusted, sizeof(LoggerConfig))) {
-		Debug::log("Invalid pointer");
+		Debug::log("thread: {} Invalid pointer", thread_id_get());
 		return false;
 	}
 
@@ -45,7 +43,7 @@ bool __cheri_libcall validate_logger_config(void *untrusted) {
 	
 	// Regex on the ip address
 	// **TBD **
-
+	
 	// Debug level
 	switch (config->level) {
 		case LogLevel::Debug:
@@ -55,7 +53,7 @@ bool __cheri_libcall validate_logger_config(void *untrusted) {
 			break;
 
 		default:
-			Debug::log("Invalid Loglevel");
+			Debug::log("thread {} Invalid Loglevel {}", thread_id_get(), (int32_t)config->level );
 			return false;
 	}
 	return true;

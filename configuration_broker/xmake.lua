@@ -16,26 +16,32 @@ includes(path.join(sdkdir, "lib/freestanding"),
 option("board")
     set_default("ibex-safe-simulator")
 
--- Library for configuration data
-library("config_data")
-    set_default(false)
-    add_files("data.cc")     
-
--- Library for logger
+-- Library for Mocked logger
 library("logger")
     set_default(false)
-    add_files("logger/lib.cc")     
+    add_files("logger/logger.cc")     
 
+-- Mocked MQTT Client
+compartment("mqtt")
+    add_files("mqtt_stub/mqtt.cc")
 
 -- Configuration Broker
-debugOption("config_broker");
+debugOption("config_broker")
 compartment("config_broker")
     add_rules("cheriot.component-debug")
     add_files("config_broker.cc")
 
--- Configurtation Publisher
+-- Configuration Publisher
+debugOption("publisher")
 compartment("publisher")
-    add_files("publisher.cc")
+    add_rules("cheriot.component-debug")
+    add_files("publisher/publisher.cc")
+
+-- Configuration JSON parser sandbox
+compartment("parser")
+    add_rules("cheriot.component-debug")
+    add_files("parser/parser.cc")
+    add_files("parser/core_json.cc")
 
 -- Compartments to be configured
 --compartment("subscriber1")
@@ -46,39 +52,31 @@ compartment("subscriber3")
     add_files("subscriber3.cc")
 
 compartment("validator")
-    add_files("validator.cc")
+    add_files("validator/validator.cc")
 
--- Sandbox Compartment
-debugOption("sandbox");
-compartment("sandbox")
-    add_rules("cheriot.component-debug")
-    add_files("sandbox.cc")
-
--- Debug options
-debugOption("config_broker")
 
 -- Firmware image for the example.
 firmware("compartment_config")
     -- Both compartments require memcpy
-    add_deps("freestanding", "debug")
-    add_deps("config_data")
+    add_deps("freestanding", "debug", "string")
+    --add_deps("config_data")
     add_deps("logger")
+    add_deps("mqtt")
     add_deps("publisher")
+    add_deps("parser")
     add_deps("config_broker")
     --add_deps("subscriber1")
     --add_deps("subscriber2")
     add_deps("subscriber3")
     add_deps("validator")
-    add_deps("sandbox")
-    add_deps("string")
     on_load(function(target)
         target:values_set("board", "$(board)")
         target:values_set("threads", {
             {
-                compartment = "publisher",
+                compartment = "mqtt",
                 priority = 2,
                 entry_point = "init",
-                stack_size = 0x500,
+                stack_size = 0x600,
                 trusted_stack_frames = 8
             },
         --    {

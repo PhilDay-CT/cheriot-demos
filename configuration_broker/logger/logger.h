@@ -1,7 +1,9 @@
 // Copyright Configured Things and CHERIoT Contributors.
 // SPDX-License-Identifier: MIT
 
-#include <stdlib.h>
+#pragma once
+
+#include <cstdlib>
 
 // Mocked example of configuration data for a remote
 // logging service  
@@ -14,11 +16,15 @@ enum class LogLevel
     Error = 3
 };
 
+struct Host {
+	char     address[16];  // ipv4 address of host
+	uint16_t port;         // port on host
+};
+
 struct LoggerConfig
 {
-	char     ipv4[16];  // ipv4 address of host
-	uint16_t port;      // port on host
-	LogLevel level;     // required logging level
+	Host     host;	 // Details of the host
+	LogLevel level;  // required logging level
 };
 
 // Function which nominally configures the logger

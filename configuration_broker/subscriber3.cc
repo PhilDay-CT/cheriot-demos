@@ -1,7 +1,5 @@
-// Copyright Microsoft and CHERIoT Contributors.
+// Copyright Configured Things and CHERIoT Contributors.
 // SPDX-License-Identifier: MIT
-
-// Contributed by Configured Things Ltd
 
 #include <compartment.h>
 #include <debug.hh>
@@ -23,8 +21,6 @@ using Debug = ConditionalDebug<true, "Subscriber #3">;
 
 #include "logger/logger.h"
 
-#include "data.h"
-
 // Keep track of the items and their last version
 struct Config
 {
@@ -35,7 +31,6 @@ struct Config
 };
 
 void logger_handler(void *d) {
-	Debug::log("logger_handler called");
 	logger_config((LoggerConfig *)d);
 }
 

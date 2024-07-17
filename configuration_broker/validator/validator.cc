@@ -6,15 +6,13 @@
 
 #include <compartment.h>
 #include <debug.hh>
-#include <thread.h>
 
 // Expose debugging features unconditionally for this compartment.
 using Debug = ConditionalDebug<true, "Validator">;
 
-//#include "validator.h"
 
-// Set for Items we are allowed to regisster a validator for 
-#include "config_broker.h"
+// Set for Items we are allowed to register a validator for 
+#include "../config_broker.h"
 #define CONFIG1 "config1"
 DEFINE_VALIDATE_CONFIG_CAPABILITY(CONFIG1);
 
@@ -24,10 +22,13 @@ DEFINE_VALIDATE_CONFIG_CAPABILITY(CONFIG1);
 // Even through this is a library call we wrap it in
 // out own callback so that it runs in this sandbox 
 //
-#include "logger/logger.h"
+#include "../logger/logger.h"
 bool __cheri_callback validateLogger(void * data) {
-    Debug::log( "thread {} called validator",thread_id_get());
-    return validate_logger_config(data);
+    bool valid = validate_logger_config(data);
+    if (!valid) {
+        Debug::log("thread {} Logger Config validation failed", thread_id_get());
+    }
+    return valid;
 }
 
 //
@@ -41,10 +42,6 @@ bool __cheri_callback validateLogger(void * data) {
 //
 void __cheri_compartment("validator") ValidatorInit()
 {
-    Debug::log("Validator init {}", thread_id_get());
-
     // Logger Config Validator 
-    set_validator(VALIDATE_CONFIG_CAPABILITY(CONFIG1), validateLogger);
-    
-    Debug::log("******** Validator Done {}", thread_id_get());    
+    set_validator(VALIDATE_CONFIG_CAPABILITY(CONFIG1), validateLogger);    
 }
