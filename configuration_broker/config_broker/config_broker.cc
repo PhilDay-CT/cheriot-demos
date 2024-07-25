@@ -1,4 +1,4 @@
-// Copyright Configured Things and CHERIoT Contributors.
+// Copyright Configured Things Ltd and CHERIoT Contributors.
 // SPDX-License-Identifier: MIT
 
 #include <cheri.hh>
@@ -18,114 +18,117 @@
 // Import some useful things from the CHERI namespace.
 using namespace CHERI;
 
-// Debugging can be enable with "xmake --config --debug-config_broker=true"
+/// Debugging can be enable with "xmake --config --debug-config_broker=true"
 using Debug = ConditionalDebug<DEBUG_CONFIG_BROKER, "Config Broker">;
 
-// Internal view of a Config Item.
-struct InternalConfigitem
+namespace
 {
-	std::atomic<uint32_t> version;    // version - used as a futex
-	void                 *data;       // current value
-	const char           *name;       // name
-	size_t                size;       // size of the created object
-	uint32_t              minTicks;   // Min system ticks between updates
-	uint64_t              nextUpdate; // Time of next valid update
-	FlagLock              lock;       // lock to prevent concurrent changes
-	int                 __cheri_callback (*parser)(const char *json, void *dst);
-	InternalConfigitem *next;
-};
+	/// Internal view of a Config Item.
+	struct InternalConfigitem
+	{
+		std::atomic<uint32_t>     version;  // version - used as a futex
+		void                     *data;     // current value
+		const char               *name;     // name
+		size_t                    size;     // size of the created object
+		uint32_t                  minTicks; // Min system ticks between updates
+		uint64_t                  nextUpdate; // Time of next valid update
+		FlagLockPriorityInherited lock; // lock to prevent concurrent changes
+		int __cheri_callback (*parser)(const char *json, void *dst);
+		InternalConfigitem *next;
+	};
 
-//
-// Set of config data items.  At scale we'd need to hold this in
-// std::map so we can do an easy lookup by name, but for now a very
-// simple link list is fine as the only operations we need are to
-// add a new item and search for an item (there is no concept of
-// deleting an item). The total number of items is limited by the
-// the set of static sealed capabilities.
-//
-InternalConfigitem *configData = nullptr;
+	/**
+	 * Set of config data items.  At scale we'd need to hold this in
+	 * std::map so we can do an easy lookup by name, but for now a very
+	 * simple link list is fine as the only operations we need are to
+	 * add a new item and search for an item (there is no concept of
+	 * deleting an item). The total number of items is limited by the
+	 * the set of static sealed capabilities.
+	 */
+	InternalConfigitem *configData = nullptr;
 
-//
-// Sealing Types
-//
+/*
+ * Keys for unsealing the various types of operation
+ */
 #define CONFIG_WRITE STATIC_SEALING_TYPE(WriteConfigKey)
 #define CONFIG_READ STATIC_SEALING_TYPE(ReadConfigKey)
 #define CONFIG_PARSER STATIC_SEALING_TYPE(ParserConfigKey)
 
-//
-// Unseal a config capability.
-//
-ConfigToken *config_capability_unseal(SObj sealedCap, SKey key)
-{
-	ConfigToken *token = token_unseal(key, Sealed<ConfigToken>{sealedCap});
-
-	if (token == nullptr)
+	/**
+	 * Unseal a config capability.
+	 */
+	ConfigToken *config_capability_unseal(SObj sealedCap, SKey key)
 	{
-		Debug::log("invalid config capability {}", sealedCap);
-		return nullptr;
-	}
+		ConfigToken *token = token_unseal(key, Sealed<ConfigToken>{sealedCap});
 
-	Debug::log("Unsealed id: {} size: {} interval: {} item: {}",
-	           token->id,
-	           token->size,
-	           token->updateInterval,
-	           token->Name);
-
-	if (token->id == 0)
-	{
-		static uint16_t nextId = 1;
-
-		// Assign an ID so we can track each capability if needed
-		token->id = nextId++;
-	}
-
-	return token;
-}
-
-//
-// Find a Config by name.  If it doesn't already exist
-// create one.  Use a LockGuard to protect against two
-// threads trying to create the same item.
-//
-FlagLock lockFindOrCreate;
-
-InternalConfigitem *find_or_create_config(ConfigToken *token)
-{
-	LockGuard g{lockFindOrCreate};
-
-	for (auto c = configData; c != nullptr; c = c->next)
-	{
-		if (strcmp(c->name, token->Name) == 0)
+		if (token == nullptr)
 		{
-			return c;
+			Debug::log("invalid config capability {}", sealedCap);
+			return nullptr;
 		}
+
+		Debug::log("Unsealed id: {} size: {} interval: {} item: {}",
+		           token->id,
+		           token->size,
+		           token->updateInterval,
+		           token->Name);
+
+		if (token->id == 0)
+		{
+			static uint16_t nextId = 1;
+
+			// Assign an ID so we can track each capability if needed
+			token->id = nextId++;
+		}
+
+		return token;
 	}
 
-	// Allocate a Config object
-	InternalConfigitem *c =
-	  static_cast<InternalConfigitem *>(malloc(sizeof(InternalConfigitem)));
+	/**
+	 * Find a Config by name.  If it doesn't already exist
+	 * create one.  Use a LockGuard to protect against two
+	 * threads trying to create the same item.
+	 */
 
-	if (c != nullptr)
+	InternalConfigitem *find_or_create_config(ConfigToken *token)
 	{
-		// Use the Name from the token that triggered the creation
-		// as the name value, since sealed objects are guaranteed not
-		// to be deallocated.
-		c->name    = token->Name;
-		c->version = 0;
-		c->data    = nullptr;
+		static FlagLock lockFindOrCreate;
+		LockGuard       g{lockFindOrCreate};
 
-		// Insert it at the start of the list
-		c->next    = configData;
-		configData = c;
-	}
+		for (auto c = configData; c != nullptr; c = c->next)
+		{
+			if (strcmp(c->name, token->Name) == 0)
+			{
+				return c;
+			}
+		}
 
-	return c;
-};
+		// Allocate a Config object
+		InternalConfigitem *c = new (std::nothrow) InternalConfigitem();
 
-//
-// Set a new value for the configuration item described by
-// the capability.
-//
+		if (c != nullptr)
+		{
+			// Use the Name from the token that triggered the creation
+			// as the name value, since sealed objects are guaranteed not
+			// to be deallocated.
+			c->name    = token->Name;
+			c->version = 0;
+			c->data    = nullptr;
+
+			// Insert it at the start of the list
+			c->next    = configData;
+			configData = c;
+		}
+
+		return c;
+	};
+
+} // namespace
+
+/**
+ * Set a new value for the configuration item described by
+ * the capability.
+ */
 int __cheri_compartment("config_broker")
   set_config(SObj sealedCap, const char *json)
 {
@@ -134,9 +137,7 @@ int __cheri_compartment("config_broker")
 	           sealedCap,
 	           json);
 
-	//
 	// Check that we've been given a valid capability
-	//
 	ConfigToken *token = config_capability_unseal(sealedCap, CONFIG_WRITE);
 	if (token == nullptr)
 	{
@@ -156,7 +157,12 @@ int __cheri_compartment("config_broker")
 
 	if (!ParsersLoaded)
 	{
-		parserInit();
+		auto res = parserInit();
+		if (res < 0)
+		{
+			Debug::log("One or more parsers failed to init");
+			return res;
+		}
 		ParsersLoaded = true;
 	}
 
@@ -168,14 +174,10 @@ int __cheri_compartment("config_broker")
 		return -ENOMEM;
 	}
 
-	//
 	// Guard against concurrent updates to this item
-	//
 	LockGuard g{c->lock};
 
-	//
 	// Check we have a parser
-	//
 	if (c->parser == nullptr)
 	{
 		Debug::log("Parser not defined for {}", token->Name);
@@ -203,7 +205,9 @@ int __cheri_compartment("config_broker")
 	}
 
 	// Create a write only Capability to pass to the parser so
-	// that it can't capture or read from it
+	// that it can't capture or read from it. This also clears
+	// the Store Capability (MC) permission so the config data
+	// can only hold simple values.
 	CHERI::Capability woNewData{newData};
 	woNewData.permissions() &= {CHERI::Permission::Store};
 
@@ -250,10 +254,10 @@ int __cheri_compartment("config_broker")
 	return 0;
 }
 
-//
-// Get the current value of a Configuration item.  The data
-// member will be nullptr if the item has not yet been set.
-//
+/**
+ * Get the current value of a Configuration item.  The data
+ * member will be nullptr if the item has not yet been set.
+ */
 ConfigItem __cheri_compartment("config_broker") get_config(SObj sealedCap)
 {
 	// Object to return.  Stack is initialised to zeros
@@ -309,9 +313,9 @@ ConfigItem __cheri_compartment("config_broker") get_config(SObj sealedCap)
 	return result;
 }
 
-//
-// Set the parser for a config item.
-//
+/**
+ * Set the parser for a config item.
+ */
 int __cheri_compartment("config_broker")
   set_parser(SObj                 sealedCap,
              __cheri_callback int parser(const char *json, void *dst))

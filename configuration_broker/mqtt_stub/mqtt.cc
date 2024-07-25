@@ -1,43 +1,45 @@
-// Copyright Configured Things and CHERIoT Contributors.
+// Copyright Configured Things Ltd and CHERIoT Contributors.
 // SPDX-License-Identifier: MIT
 
-//
-// Fake MQTT server that periodically "publishes"
-// messages where the data is a json string
-//
+/**
+ * Fake MQTT server that periodically "publishes"
+ * messages where the data is a json string
+ */
 
-// Examles of input in JSON
-//
-// topic: logger
-// -------------
-// {
-//   host: {
-//     address: "x.x.x.x",
-//     port: 400
-//   },
-//   level: "info"
-// }
-//
-// topic: rgbled
-// -------------
-// {
-//   led0: {red: 100, green: 100, blue: 100},
-//   led1: {red: 200, green: 200, blue: 200},
-// }
-//
-// topic: userled
-// --------------
-// {
-//   led0: 'on',
-//   led1: 'off',
-//   led2: 'ON',
-//   led3: 'OFF',
-//   led4: 'Off',
-//   led5: 'On',
-//   led6: 'off',
-//   led7: 'On'
-// }
-//
+/*
+ * Examples of input in JSON
+ *
+ * topic: logger
+ * -------------
+ * {
+ *   host: {
+ *     address: "x.x.x.x",
+ *     port: 400
+ *   },
+ *   level: "info"
+ * }
+ *
+ * topic: rgbled
+ * -------------
+ * {
+ *   led0: {red: 100, green: 100, blue: 100},
+ *   led1: {red: 200, green: 200, blue: 200},
+ * }
+ *
+ * topic: userled
+ * --------------
+ * {
+ *   led0: 'on',
+ *   led1: 'off',
+ *   led2: 'ON',
+ *   led3: 'OFF',
+ *   led4: 'Off',
+ *   led5: 'On',
+ *   led6: 'off',
+ *   led7: 'On'
+ * }
+ *
+ */
 
 #include "cdefs.h"
 #include <compartment.h>
@@ -51,6 +53,9 @@
 // Expose debugging features unconditionally for this compartment.
 using Debug = ConditionalDebug<true, "MQTT">;
 
+/**
+ * Define a test message
+ */
 struct Message
 {
 	const char *description;
@@ -59,7 +64,7 @@ struct Message
 	const char *json;
 };
 
-// Set of messages to publish in a continual loop
+// Set of messages to publish.
 const Message Messages[] = {
 
   // Valid RGB LED config
@@ -138,9 +143,13 @@ const Message Messages[] = {
 
 };
 
-//
-// Thread Entry point for the MQTT stub
-//
+/**
+ * Thread Entry point for the MQTT stub.  The thread "publishes" each message by
+ * calling the Provider's UpdateConfig() methodsas if the Provider has
+ * subscribed to the topics.  It then waits a short time before publsihing the
+ * next message. After all the messages has been sent it sends two further
+ * messages in quick succession to show the rate lmiting in operation.
+ */
 void __cheri_compartment("mqtt") init()
 {
 	for (auto &m : Messages)

@@ -1,3 +1,5 @@
+' PlantUML Compartment diagram for ReadMe
+
 @startuml
 
 sprite $locked [16x16/16] {
@@ -42,6 +44,7 @@ FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
 
 [mqtt-stub] as mqtt
 rectangle Provider <<$locked>>
+
 rectangle Broker <<$unlocked>>
 rectangle Parser <<$locked>>
 rectangle "Consumer #1" <<$locked>> as c1

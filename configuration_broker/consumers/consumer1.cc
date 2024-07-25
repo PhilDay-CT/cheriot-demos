@@ -25,8 +25,10 @@ using Debug = ConditionalDebug<true, "Consumer #1">;
 #include "../logger/logger.h"
 #include "../rgb_led/rgb_led.h"
 
-// Keep track of the items, which version we have, and the
-// handler for updates
+/**
+ * Keep track of the items, which version we have, and the
+ * handler for updates
+ */
 struct Config
 {
 	SObj                   capability; // Sealed Read Capability
@@ -35,6 +37,9 @@ struct Config
 	int (*handler)(void *); // Handler to call
 };
 
+/**
+ * Handle updates to the logger configuration
+ */
 int logger_handler(void *newConfig)
 {
 	static LoggerConfig *config;
@@ -58,6 +63,9 @@ int logger_handler(void *newConfig)
 	return 0;
 }
 
+/**
+ * Handle updates to the RGB LED configuration
+ */
 int led_handler(void *newConfig)
 {
 	// Claim the config against our heap quota to ensure
@@ -83,12 +91,14 @@ int led_handler(void *newConfig)
 	return 0;
 }
 
-//
-// Thread entry point.
-//
+/**
+ * Thread entry point.  The waits for changes to one
+ * or more configuration values and then calls the
+ * appropriate handler.
+ */
 void __cheri_compartment("consumer1") init()
 {
-	// List of configuration items we are tracking
+	/// List of configuration items we are tracking
 	Config configItems[] = {
 	  {READ_CONFIG_CAPABILITY(LOGGER_CONFIG), 0, nullptr, logger_handler},
 	  {READ_CONFIG_CAPABILITY(RGB_LED_CONFIG), 0, nullptr, led_handler},

@@ -1,12 +1,13 @@
-// Copyright Configured Things and CHERIoT Contributors.
+// Copyright Configured Things Ltd and CHERIoT Contributors.
 // SPDX-License-Identifier: MIT
 
-#pragma once
+#include <stdlib.h>
 
-#include <cstdlib>
-
-// Mocked example of configuration data for a remote
-// logging service
+/**
+ * Mocked example of configuration data for a controller
+ * with a set of eight LEDs that can be turned on and off
+ * (such as the user LEDs on a Sonata Board)
+ */
 
 enum class User_LED
 {
@@ -26,6 +27,8 @@ struct User_LED_Config
 	User_LED led7;
 };
 
-// Function which nominally configures the user LEDs
-// In this demo it just prints the config value
+/**
+ * Function which nominally configures the user LEDs
+ * In this demo it just prints the config value
+ */
 void __cheri_libcall user_led_config(void *config);

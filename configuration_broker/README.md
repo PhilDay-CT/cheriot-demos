@@ -1,9 +1,9 @@
 Safe Configuration Management
 =============================
 
-Contributed by ConfiguredThings Ltd
+Contributed by Configured Things Ltd
 
-All system rely on some form of configuration data, and the configuration interface is a significant part of the attack surface.
+All systems rely on some form of configuration data, and the configuration interface is a significant part of the attack surface.
 Misconfiguration, whether accidental or malicious, is one of the main sources of security vulnerabilities.
 Purely immutable systems, where configuration is baked in at build time, may work for container based environments where re-deployment is relatively easy but are not an option for embedded systems.  
 The solution in many cases is to create an often complex trust model around and within the configuration system to limit and control configuration changes, where the complexity itself adds to the risk profile. 
@@ -39,7 +39,7 @@ All operations take place on a thread calling into the Broker, and it only calls
 Providers, Consumers, and Parsers are assigned their rights via Static Sealed Capabilities, which only the Broker can unseal.
 This means this aspect is fixed at build time and is auditable.
 
-<img src=doc/broker.svg>
+<img src=doc/Compartments.svg>
 
 The model can be thought of as similar to a pub/sub architecture with a single retained message for each item and a security policy defined at build time through static sealed capabilities.
 The configuration data is declarative so there is no need or value in maintaining a full sequence of updates; each new version is a complete definition of the required configuration item. 
@@ -47,7 +47,7 @@ Aligned with the pub/sub model publishing items and subscribing for items can ha
 This avoids any timing issues during system startup.
 
 In the demo new values are provided as serialised JSON strings, with each item coming from a specific topic from a (not included) MQTT Broker.
-The Provider is in effect a simply an authorised mapping between the topics and configuration items.
+The Provider is in effect simply an authorised mapping between the topics and configuration items.
 The Parser and Consumers contain code which is specific to each item.
 The Broker is agnostic to the details of configuration items, and has no prior knowledge of which items exist.
 
@@ -57,10 +57,10 @@ Because the Broker provides an abstraction between Providers, Consumers and Pars
 #### Parsers
 The parsers have the key role of converting untrusted data received from the network into verified and trusted configuration values.
 In traditional systems parsers are vulnerable to a range of attacks such as injection and buffer overflow.
-Using Cheriot each parser runs as stateless method (using heap controls) in a sandbox compartment that ensure that any issues are contained to failing only the current parse operation.
+Using CHERIoT each parser runs as a stateless method (using heap controls) in its own a sandbox compartment which ensures that any issues are contained to failing only the current parse operation.
 Parsers are given a static sealed capability for each item type they are allowed to parser, which includes two properties of the item.
 * The size of the object they will produce.
-* The minimum interval in mS between updates.
+* The minimum interval in milliseconds between updates.
 They use this to register with the Broker, which is the only compartment that can unseal the capability.
 The Broker will only call registered parsers, which are passed as cheri_callbacks so they are not callable by any other compartment.
 The Broker only passes non global capabilities to the Parser, so the Parser is unable to capture them.
@@ -70,6 +70,10 @@ If the parsing of the new value results in access beyond this size then that wil
 
 The interval reflects that parsing an object and/or applying updates can can be expensive tasks, and protects against DoS attacks from a compromised Provider.
 The Broker will reject without attempting to parse any updates that are made less that min_interval since the last attempt. 
+
+Parsers that can run without any heap interaction could be co-located in the same sandbox.
+In the demo we use a combination of cheriot library wrapper to coreJSON from FreeRTOS and magic_emun, which requires a small amount of heap manipulation.
+Running each parser in its own sandbox compartment with a small heap quota prevents any risk of interaction between the different configuration item types even if there is some peristent heap based attack on the parser.  
 
 ##### Integrity
 The Broker trusts that the Parser will correctly populate the object, but this can be established by code inspection & testing.
@@ -200,7 +204,11 @@ Consumer #1 is authorised to receive the RGD LED configuration.
 Consumer #2 is authorised to receive the User LED configuration.
 Both consumers are authorised to receive the Logger configuration.  
 
-A thread is stared in each consumer which waits for new versions to become available and then, to keep the demo h/w agnostic, makes a library call to print the received value.
+A thread is started in each consumer which waits for new versions to become available and then, to keep the demo h/w agnostic, makes a library call to print the received value.
+
+The following sequence diagarm shows the flow of the threads across the compartments. 
+
+<img src=doc/Sequence.svg>
 
 The demo uses the "ibex-safe-simulator" board as its target, since this provides a realtime clock.
 This allows the Provider to sleep between messages giving the Consumers a chance to run.    

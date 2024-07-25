@@ -1,4 +1,4 @@
-// Copyright Configured Things and CHERIoT Contributors.
+// Copyright Configured Things Ltd and CHERIoT Contributors.
 // SPDX-License-Identifier: MIT
 
 #include "cdefs.h"
@@ -10,9 +10,10 @@
 // Expose debugging features unconditionally for this compartment.
 using Debug = ConditionalDebug<true, "Provider">;
 
-//
-// This compartment can set config values "logger" and "rgb_led"
-//
+/**
+ * Define the sealed capabilites for each of the configurtaion
+ * items this compartment is allowed to update
+ */
 #include "../config_broker/config_broker.h"
 #define RGB_LED_CONFIG "rgb_led"
 DEFINE_WRITE_CONFIG_CAPABILITY(RGB_LED_CONFIG)
@@ -23,15 +24,17 @@ DEFINE_WRITE_CONFIG_CAPABILITY(USER_LED_CONFIG)
 #define LOGGER_CONFIG "logger"
 DEFINE_WRITE_CONFIG_CAPABILITY(LOGGER_CONFIG)
 
-// Map of Config values to topics
+/**
+ * Map of Config values to topics
+ */
 struct Config
 {
 	const char *topic;
 	SObj        cap; // Sealed Write Capability
 };
 
-// Can't use the macros at the file level to statically
-// initialise topicMap, so do via a function
+// We can't use the macros at the file level to statically
+// initialise topicMap, so do it via a function
 Config topicMap[3];
 void   set_up_topic_map()
 {
@@ -51,29 +54,35 @@ void   set_up_topic_map()
 	}
 }
 
-//
-// Compartment Entry point for the publisher
-//
+/**
+ * Update a configuration item using the JSON string
+ * received on a particular topic. With a real MQTT
+ * client this would be the callback registered when
+ * subscribing to the topic.
+ */
 int __cheri_compartment("provider")
   updateConfig(const char *topic, const char *message)
 {
 	Debug::log("thread {} got {} on {}", thread_id_get(), message, topic);
 
+	// Initalise the topic map
 	set_up_topic_map();
 
 	bool found = false;
-	int res = -1;
+	int  res   = -1;
 
+	// Use the topicMap to work out which value the
+	// message is for.
 	for (auto t : topicMap)
 	{
 		if (strcmp(t.topic, topic) == 0)
 		{
 			found = true;
-			res = set_config(t.cap, message);
+			res   = set_config(t.cap, message);
 			if (res < 0)
-			{	
+			{
 				Debug::log("thread {} Failed to set value for {}",
-		    		       thread_id_get(),
+				           thread_id_get(),
 				           t.cap);
 			}
 			break;
@@ -83,9 +92,8 @@ int __cheri_compartment("provider")
 	if (!found)
 	{
 		Debug::log(
-			  "thread {} Unexpected Message topic {}", thread_id_get(), topic);
+		  "thread {} Unexpected Message topic {}", thread_id_get(), topic);
 	}
-	
-	return res;
 
+	return res;
 };
