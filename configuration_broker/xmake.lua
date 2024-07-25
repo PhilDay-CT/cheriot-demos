@@ -1,4 +1,4 @@
--- Copyright Configred Things Ltd and CHERIoT Contributors.
+-- Copyright Configured Things Ltd and CHERIoT Contributors.
 -- SPDX-License-Identifier: MIT
 
 

@@ -26,7 +26,7 @@ Providing a generic broker and expressing the trust model via its interfaces mak
 ## Overview
 
 Each item of configuration data has a name, a value, and a version.
-New values are supplied as serialised JSON and parsed into a corresponding data strut. 
+New values are supplied as serialised JSON and parsed into a corresponding data structure. 
 
 There are four main roles:
 * Providers are authorised to supply the values for one or more items.
