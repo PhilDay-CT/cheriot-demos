@@ -67,19 +67,10 @@ namespace
 			return nullptr;
 		}
 
-		Debug::log("Unsealed id: {} size: {} interval: {} item: {}",
-		           token->id,
+		Debug::log("Unsealed - Name: {} size: {} interval: {}",
+		           token->Name,
 		           token->size,
-		           token->updateInterval,
-		           token->Name);
-
-		if (token->id == 0)
-		{
-			static uint16_t nextId = 1;
-
-			// Assign an ID so we can track each capability if needed
-			token->id = nextId++;
-		}
+		           token->updateInterval);
 
 		return token;
 	}
@@ -151,13 +142,13 @@ int __cheri_compartment("config_broker")
 	// the parser compartment that runs to do that and
 	// then has to hang around (as threads can't exit) we
 	// use the first thread that tries to load a value to
-	// make a cross-comparement call to parserInit()
+	// make a cross-compartment call to parserInit()
 	//
 	static bool ParsersLoaded = false;
 
 	if (!ParsersLoaded)
 	{
-		auto res = parserInit();
+		auto res = parser_init();
 		if (res < 0)
 		{
 			Debug::log("One or more parsers failed to init");
@@ -197,7 +188,7 @@ int __cheri_compartment("config_broker")
 	c->nextUpdate = tick + c->minTicks;
 
 	// Allocate heap space for the new value
-	void *newData = malloc(c->size);
+	auto newData = malloc(c->size);
 	if (newData == nullptr)
 	{
 		Debug::log("Failed to allocate space for {}", token->Name);
@@ -206,13 +197,15 @@ int __cheri_compartment("config_broker")
 
 	// Create a write only Capability to pass to the parser so
 	// that it can't capture or read from it. This also clears
-	// the Store Capability (MC) permission so the config data
+	// the Load/Store Capability (MC) permission so the config data
 	// can only hold simple values.
 	CHERI::Capability woNewData{newData};
 	woNewData.permissions() &= {CHERI::Permission::Store};
 
-	// Create a read only Capability of the json string to pass
-	// to the parser so that it can't capture or change it
+	// Create a read only Capability of the JSON string to pass
+	// to the parser so that it can't capture or change it. This
+	// also clears the Load/Store Capability (MC) permission which
+	// prevents capabilities being embedded in the JSON.
 	CHERI::Capability roJSON{json};
 	roJSON.permissions() &= {CHERI::Permission::Load};
 

@@ -6,11 +6,11 @@
 
 #include "core_json.h"
 
-namespace json_parser
+namespace jsonParser
 {
 
 	/**
-	 * Valdiate that a string is serialised JSON
+	 * Validate that a string is serialised JSON
 	 */
 	JSONStatus_t __cheri_libcall validate(const char *buf, size_t max);
 
@@ -25,4 +25,4 @@ namespace json_parser
 	                                    char      **outValue,
 	                                    size_t     *outValueLength);
 
-} // namespace json_parser
+} // namespace jsonParser

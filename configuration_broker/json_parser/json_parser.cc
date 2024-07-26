@@ -6,11 +6,11 @@
 
 #include "core_json.h"
 
-namespace json_parser
+namespace jsonParser
 {
 
 	/**
-	 * Valdiate that a string is serialised JSON
+	 * Validate that a string is serialised JSON
 	 */
 	JSONStatus_t __cheri_libcall validate(const char *buf, size_t max)
 	{
@@ -18,7 +18,7 @@ namespace json_parser
 	}
 
 	/*
-	 * Set outValue to point to the stary of a key (query) in
+	 * Set outValue to point to the start of a key (query) in
 	 * a JSON string (buf)
 	 */
 	JSONStatus_t __cheri_libcall search(char       *buf,
@@ -32,4 +32,4 @@ namespace json_parser
 		  buf, max, query, queryLength, outValue, outValueLength);
 	}
 
-} // namespace json_parser
+} // namespace jsonParser

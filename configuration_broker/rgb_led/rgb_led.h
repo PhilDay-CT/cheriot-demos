@@ -6,18 +6,22 @@
 // Mocked example of configuration data for a controller
 // with two RGB LEDs (such as on the Sonata Board)
 
-struct LED_RGB
+namespace rgbLed {
+
+struct Colour
 {
 	uint8_t red;
 	uint8_t green;
 	uint8_t blue;
 };
 
-struct RGB_LED_Config
+struct Config
 {
-	LED_RGB led0; // Settings for LED 0
-	LED_RGB led1; // Settings for LED 1
+	Colour led0; // Settings for LED 0
+	Colour led1; // Settings for LED 1
 };
+
+} // namespace rebLed
 
 /**
  * Configure the LEDs

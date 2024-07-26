@@ -11,7 +11,7 @@
 using Debug = ConditionalDebug<true, "Provider">;
 
 /**
- * Define the sealed capabilites for each of the configurtaion
+ * Define the sealed capabilites for each of the configuration
  * items this compartment is allowed to update
  */
 #include "../config_broker/config_broker.h"
@@ -24,35 +24,40 @@ DEFINE_WRITE_CONFIG_CAPABILITY(USER_LED_CONFIG)
 #define LOGGER_CONFIG "logger"
 DEFINE_WRITE_CONFIG_CAPABILITY(LOGGER_CONFIG)
 
-/**
- * Map of Config values to topics
- */
-struct Config
+namespace
 {
-	const char *topic;
-	SObj        cap; // Sealed Write Capability
-};
 
-// We can't use the macros at the file level to statically
-// initialise topicMap, so do it via a function
-Config topicMap[3];
-void   set_up_topic_map()
-{
-	static bool init = false;
-	if (!init)
+	/**
+	 * Map of Config values to topics
+	 */
+	struct Config
 	{
-		topicMap[0].topic = "logger";
-		topicMap[0].cap   = WRITE_CONFIG_CAPABILITY(LOGGER_CONFIG);
+		const char *topic;
+		SObj        cap; // Sealed Write Capability
+	};
 
-		topicMap[1].topic = "rgbled";
-		topicMap[1].cap   = WRITE_CONFIG_CAPABILITY(RGB_LED_CONFIG);
+	// We can't use the macros at the file level to statically
+	// initialise topicMap, so do it via a function
+	Config topicMap[3];
+	void   set_up_topic_map()
+	{
+		static bool init = false;
+		if (!init)
+		{
+			topicMap[0].topic = "logger";
+			topicMap[0].cap   = WRITE_CONFIG_CAPABILITY(LOGGER_CONFIG);
 
-		topicMap[2].topic = "userled";
-		topicMap[2].cap   = WRITE_CONFIG_CAPABILITY(USER_LED_CONFIG);
+			topicMap[1].topic = "rgbled";
+			topicMap[1].cap   = WRITE_CONFIG_CAPABILITY(RGB_LED_CONFIG);
 
-		init = true;
+			topicMap[2].topic = "userled";
+			topicMap[2].cap   = WRITE_CONFIG_CAPABILITY(USER_LED_CONFIG);
+
+			init = true;
+		}
 	}
-}
+
+} // namespace
 
 /**
  * Update a configuration item using the JSON string

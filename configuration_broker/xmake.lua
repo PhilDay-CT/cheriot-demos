@@ -49,7 +49,7 @@ compartment("config_broker")
 compartment("provider")
     add_files("provider/provider.cc")
 
--- Configuration JSON parser sandbox
+-- Configuration JSON parser sandboxes
 compartment("parser_logger")
     add_files("parser/parse_logger.cc")
 

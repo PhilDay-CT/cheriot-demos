@@ -24,12 +24,12 @@ bool get_string(const char *json, const char *key, char *dst)
 	char  *value;
 	size_t valueLength;
 
-	auto result = json_parser::search((char *)json,
-	                                  strlen(json),
-	                                  (char *)key,
-	                                  strlen(key),
-	                                  &value,
-	                                  &valueLength);
+	auto result = jsonParser::search((char *)json,
+	                                 strlen(json),
+	                                 (char *)key,
+	                                 strlen(key),
+	                                 &value,
+	                                 &valueLength);
 
 	if (result != JSONSuccess)
 	{
@@ -44,7 +44,7 @@ bool get_string(const char *json, const char *key, char *dst)
 
 /**
  * Function template to extract a number value. If after
- * asignment *dst doesn't equal the value we tried to save
+ * assignment *dst doesn't equal the value we tried to save
  * then we assume that the value has overflowed and is not
  * valid for the type.
  */
@@ -54,12 +54,12 @@ bool get_number(const char *json, const char *key, T *dst)
 	char  *value;
 	size_t valueLength;
 
-	auto result = json_parser::search((char *)json,
-	                                  strlen(json),
-	                                  (char *)key,
-	                                  strlen(key),
-	                                  &value,
-	                                  &valueLength);
+	auto result = jsonParser::search((char *)json,
+	                                 strlen(json),
+	                                 (char *)key,
+	                                 strlen(key),
+	                                 &value,
+	                                 &valueLength);
 
 	if (result != JSONSuccess)
 	{
@@ -104,7 +104,7 @@ bool get_number(const char *json, const char *key, T *dst)
 /**
  * Extract an enum value based on it's string representation
  * using magic enum. The value in JSON is treated as being
- * case insenstive.
+ * case insensitive.
  */
 template<class T>
 bool get_enum(const char *json, const char *key, T *dst)
@@ -112,12 +112,12 @@ bool get_enum(const char *json, const char *key, T *dst)
 	char  *value;
 	size_t valueLength;
 
-	auto result = json_parser::search((char *)json,
-	                                  strlen(json),
-	                                  (char *)key,
-	                                  strlen(key),
-	                                  &value,
-	                                  &valueLength);
+	auto result = jsonParser::search((char *)json,
+	                                 strlen(json),
+	                                 (char *)key,
+	                                 strlen(key),
+	                                 &value,
+	                                 &valueLength);
 
 	if (result != JSONSuccess)
 	{

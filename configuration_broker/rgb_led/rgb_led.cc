@@ -14,7 +14,7 @@ using Debug = ConditionalDebug<true, "RGB LED">;
  */
 void __cheri_libcall rgb_led_config(void *c)
 {
-	auto *config = (RGB_LED_Config *)c;
+	auto *config = (rgbLed::Config *)c;
 	Debug::log("LED 0 red: {} green: {} blue: {}",
 	           config->led0.red,
 	           config->led0.green,

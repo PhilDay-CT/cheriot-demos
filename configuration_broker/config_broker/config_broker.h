@@ -17,7 +17,6 @@
  */
 struct ConfigToken
 {
-	uint16_t   id;             // id for the capability, assigned on first use
 	size_t     size;           // Size of the item
 	uint32_t   updateInterval; // Min interval in mS between updates
 	const char Name[];         // Name of the configuration item
@@ -30,7 +29,6 @@ struct ConfigToken
                                                                                \
 	DECLARE_AND_DEFINE_STATIC_SEALED_VALUE(                                    \
 	  struct {                                                                 \
-		  uint16_t   id;                                                       \
 		  size_t     notUsed1;                                                 \
 		  uint32_t   notUsed2;                                                 \
 		  const char Name[sizeof(name)];                                       \
@@ -38,7 +36,6 @@ struct ConfigToken
 	  config_broker,                                                           \
 	  ReadConfigKey,                                                           \
 	  __read_config_capability_##name,                                         \
-	  0,                                                                       \
 	  0,                                                                       \
 	  0,                                                                       \
 	  name);
@@ -53,7 +50,6 @@ struct ConfigToken
                                                                                \
 	DECLARE_AND_DEFINE_STATIC_SEALED_VALUE(                                    \
 	  struct {                                                                 \
-		  uint16_t   id;                                                       \
 		  size_t     notUsed1;                                                 \
 		  uint32_t   notUsed2;                                                 \
 		  const char Name[sizeof(name)];                                       \
@@ -61,7 +57,6 @@ struct ConfigToken
 	  config_broker,                                                           \
 	  WriteConfigKey,                                                          \
 	  __write_config_capability_##name,                                        \
-	  0,                                                                       \
 	  0,                                                                       \
 	  0,                                                                       \
 	  name);
@@ -77,7 +72,6 @@ struct ConfigToken
                                                                                \
 	DECLARE_AND_DEFINE_STATIC_SEALED_VALUE(                                    \
 	  struct {                                                                 \
-		  uint16_t   id;                                                       \
 		  size_t     size;                                                     \
 		  uint32_t   update_interval;                                          \
 		  const char Name[sizeof(name)];                                       \
@@ -85,7 +79,6 @@ struct ConfigToken
 	  config_broker,                                                           \
 	  ParserConfigKey,                                                         \
 	  __parser_config_capability_##name,                                       \
-	  0,                                                                       \
 	  Size,                                                                    \
 	  UpdateInterval,                                                          \
 	  name);

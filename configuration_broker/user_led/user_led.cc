@@ -14,7 +14,7 @@ using Debug = ConditionalDebug<true, "USER LED">;
  */
 void __cheri_libcall user_led_config(void *c)
 {
-	auto *config = (User_LED_Config *)c;
+	auto *config = (userLed::Config *)c;
 	Debug::log("User LEDs: {} {} {} {} {} {} {} {}",
 	           config->led0,
 	           config->led1,
