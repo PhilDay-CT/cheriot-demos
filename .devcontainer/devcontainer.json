@@ -15,8 +15,12 @@
         "xmake.compileCommandsDirectory": "${workspaceRoot}",
         "xmake.workingDirectory": "${workspaceRoot}",
         "xmake.additionalConfigArguments": "--sdk=/cheriot-tools/"
-      }
+      },
+      
     }
-  }
+  },
+  "mounts" : [
+    "source=/media/phil/SONATA,target=/mnt/SONATA,type=bind"
+  ]
 }
 

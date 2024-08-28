@@ -50,7 +50,7 @@ using Debug = ConditionalDebug<true, "Parser">;
 
 #include "../user_led/user_led.h"
 #define USER_LED_CONFIG "user_led"
-DEFINE_PARSER_CONFIG_CAPABILITY(USER_LED_CONFIG, sizeof(userLed::Config), 1800);
+DEFINE_PARSER_CONFIG_CAPABILITY(USER_LED_CONFIG, sizeof(userLed::Config), 800);
 
 
 /**

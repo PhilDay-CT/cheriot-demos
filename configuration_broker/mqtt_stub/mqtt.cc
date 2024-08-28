@@ -114,7 +114,7 @@ namespace
 	   0,
 	   "rgbled",
 	   "{\"led1\":{\"red\":0,  \"green\":86, \"blue\":164},"
-	   " \"led0\":{\"red\":255,\"green\":200,\"blue\":200}}"},
+	   " \"led0\":{\"red\":155,\"green\":100,\"blue\":100}}"},
 
 	  // Valid User LED config
 	  {"Valid User LED config",
@@ -159,27 +159,32 @@ namespace
  */
 void __cheri_compartment("mqtt") init()
 {
-	for (auto &m : Messages)
-	{
-		Debug::log("-------- {} --------", m.description);
-		Debug::log("thread {} Send {} {}", thread_id_get(), m.topic, m.json);
-		auto res = updateConfig(m.topic, m.json);
-		Debug::Assert(res == m.expected, "Unexpected result {}", res);
+	while (true) { 
+		for (auto &m : Messages)
+		{
+			Debug::log("-------- {} --------", m.description);
+			Debug::log("thread {} Send {} {}", thread_id_get(), m.topic, m.json);
+			auto res = updateConfig(m.topic, m.json);
+			Debug::Assert(res == m.expected, "Unexpected result {}", res);
 
-		// Give the consumers a chance to run
-		Timeout t1{MS_TO_TICKS(500)};
+			// Give the consumers a chance to run
+			Timeout t1{MS_TO_TICKS(500)};
+			thread_sleep(&t1, ThreadSleepNoEarlyWake);
+		}
+
+		// try to update the RGB LED too quickly
+		auto m = Messages[0];
+		Debug::log("------- Update RGB LED --------");
+		auto res = updateConfig(m.topic, m.json);
+		Debug::Assert(res == 0, "Unexpected result {}", res);
+
+		Debug::log("------- Update RGB LED too quickly --------");
+		res = updateConfig(m.topic, m.json);
+		Debug::Assert(res == -EBUSY, "Unexpected result {}", res);
+
+		Debug::log("\n---- Finished ----");
+		
+		Timeout t1{MS_TO_TICKS(1000)};
 		thread_sleep(&t1, ThreadSleepNoEarlyWake);
 	}
-
-	// try to update the RGB LED too quickly
-	auto m = Messages[0];
-	Debug::log("------- Update RGB LED --------");
-	auto res = updateConfig(m.topic, m.json);
-	Debug::Assert(res == 0, "Unexpected result {}", res);
-
-	Debug::log("------- Update RGB LED too quickly --------");
-	res = updateConfig(m.topic, m.json);
-	Debug::Assert(res == -EBUSY, "Unexpected result {}", res);
-
-	Debug::log("\n---- Finished ----");
 };

@@ -12,7 +12,7 @@ includes(path.join(sdkdir, "lib/freestanding"),
          path.join(sdkdir, "lib/string"))
 
 option("board")
-    set_default("ibex-safe-simulator")
+    set_default("sonata")
 
 -- library for JSON parser   
 library("json_parser")
@@ -28,11 +28,13 @@ library("logger")
 -- Library for Mocked RGB LED config service
 library("rgb_led")
     set_default(false)
+    add_deps("cxxrt")
     add_files("rgb_led/rgb_led.cc")       
 
 -- Library for Mocked User LED config service
 library("user_led")
     set_default(false)
+    add_deps("cxxrt")
     add_files("user_led/user_led.cc")       
 
 -- Mocked MQTT Client
@@ -102,7 +104,7 @@ firmware("config-broker-ibex-sim")
                 priority = 2,
                 entry_point = "init",
                 stack_size = 0x500,
-                trusted_stack_frames = 4
+                trusted_stack_frames = 8
             },
             {
                 -- Thread to consume config values.
@@ -111,7 +113,7 @@ firmware("config-broker-ibex-sim")
                 priority = 2,
                 entry_point = "init",
                 stack_size = 0x500,
-                trusted_stack_frames = 4
+                trusted_stack_frames = 8
             },
         }, {expand = false})
     end)

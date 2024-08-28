@@ -48,7 +48,7 @@ using Debug = ConditionalDebug<true, "Logger Parser">;
 
 #include "../logger/logger.h"
 #define LOGGER_CONFIG "logger"
-DEFINE_PARSER_CONFIG_CAPABILITY(LOGGER_CONFIG, sizeof(LoggerConfig), 500);
+DEFINE_PARSER_CONFIG_CAPABILITY(LOGGER_CONFIG, sizeof(LoggerConfig), 400);
 
 /**
  * Parse a json string into a LoggerConfig struct.

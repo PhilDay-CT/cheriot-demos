@@ -182,7 +182,7 @@ int __cheri_compartment("config_broker")
 	if ((c->nextUpdate > 0) && (tick < c->nextUpdate))
 	{
 		Debug::log(
-		  "Rate limit exceeded: tick {} next update {}", tick, c->nextUpdate);
+		  "Rate limit exceeded: tick {} next update {} interval {}", tick, c->nextUpdate, c->minTicks);
 		return -EBUSY;
 	}
 	c->nextUpdate = tick + c->minTicks;
