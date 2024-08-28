@@ -11,16 +11,25 @@
 #include <token.h>
 
 // Define a sealed capability that gives this compartment
-// read access to configuration data "logger" and "rgb_led"
+// read access to configuration data "lcd" and "rgb_led"
 #include "../config_broker/config_broker.h"
 
 #define RGB_LED_CONFIG "rgb_led"
 DEFINE_READ_CONFIG_CAPABILITY(RGB_LED_CONFIG)
 
+#define LCD_CONFIG "lcd"
+DEFINE_READ_CONFIG_CAPABILITY(LCD_CONFIG)
+
+
 // Expose debugging features unconditionally for this compartment.
 using Debug = ConditionalDebug<true, "Consumer #1">;
 
 #include "../rgb_led/rgb_led.h"
+
+#include "../sonata_lcd/lcd.hh"
+#include "../lcd/lcd.h"
+#include "../logos/lowrisc_logo.h"
+#include "../logos/CT_logo.h"
 
 namespace
 {
@@ -65,6 +74,59 @@ namespace
 		return 0;
 	}
 
+	int lcd_handler(void *newConfig)
+	{
+		using namespace sonata::lcd;
+
+		static LCD::Logo currentLogo;
+		static auto lcd = SonataLcd();
+
+		// Claim the config against our heap quota to ensure
+		// it remains available, as the broker will free it
+		// when it gets a new value.
+		//
+		// The call to configure the led might be into another
+		// compartment so we can't rely on the fast claim
+		if (heap_claim(MALLOC_CAPABILITY, newConfig) == 0)
+		{
+			Debug::log("Failed to claim {}", newConfig);
+			return -1;
+		}
+
+		// Configure the controller
+		auto config = static_cast<LCD::Config *>(newConfig);
+
+		Debug::log("LCD Config: logo: {} {}",
+				config->logo, currentLogo);
+		
+		
+		{	
+			Debug::log("Set logo {}");
+			currentLogo = config->logo;
+			auto screen   = Rect::from_point_and_size(Point::ORIGIN, lcd.resolution());
+			auto logoRect = screen.centered_subrect({105, 80});
+
+			Debug::log("Drawing");
+			switch(config->logo){
+				case LCD::Logo::ConfiguredThings:
+					lcd.draw_image_rgb565(logoRect, CTLogo105x80);
+					break;
+
+				case LCD::Logo::lowRISC:
+					lcd.draw_image_rgb565(logoRect, lowriscLogo105x80);
+					break;
+			}
+			Debug::log("After Drawing");
+			
+		}
+
+		// We can assume the controller has used these values
+		// now so just release our claim on the config
+		free(newConfig);
+
+		return 0;
+	}
+
 } // namespace
 
 /**
@@ -77,6 +139,7 @@ void __cheri_compartment("consumer1") init()
 	/// List of configuration items we are tracking
 	Config configItems[] = {
 	  {READ_CONFIG_CAPABILITY(RGB_LED_CONFIG), 0, nullptr, led_handler},
+	  {READ_CONFIG_CAPABILITY(LCD_CONFIG), 0, nullptr, lcd_handler},
 	};
 
 	auto numOfItems = sizeof(configItems) / sizeof(configItems[0]);

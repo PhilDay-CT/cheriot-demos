@@ -14,6 +14,9 @@ includes(path.join(sdkdir, "lib/freestanding"),
 option("board")
     set_default("sonata")
 
+-- sonata libraries
+includes("sonata_lcd");
+
 -- library for JSON parser   
 library("json_parser")
     set_default(false)
@@ -53,6 +56,9 @@ compartment("parser_rgb_led")
 compartment("parser_user_led")
     add_files("parser/parse_user_led.cc")
 
+compartment("parser_lcd")
+    add_files("parser/parse_lcd.cc")
+
 -- Consumers
 compartment("consumer1")
     add_files("consumers/consumer1.cc")
@@ -66,12 +72,14 @@ firmware("config-broker-sonata")
     add_deps("json_parser")
     add_deps("rgb_led")
     add_deps("user_led")
+    add_deps("lcd")
     -- compartments
     add_deps("mqtt")
     add_deps("provider")
     add_deps("config_broker")
     add_deps("parser_rgb_led")
     add_deps("parser_user_led")
+    add_deps("parser_lcd")
     add_deps("consumer1")
     add_deps("consumer2")
     on_load(function(target)

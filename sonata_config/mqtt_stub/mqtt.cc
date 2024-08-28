@@ -70,6 +70,12 @@ namespace
 	// Set of messages to publish.
 	const Message Messages[] = {
 
+	  {"LCD config",
+	   0,
+	   "lcd",
+	   "{\"logo\": \"ConfiguredThings\"}"},
+
+
 	  // Valid RGB LED config
 	  {"Valid RGB LED config",
 	   0,
@@ -83,6 +89,11 @@ namespace
 	   "userled",
 	   "{\"led0\":\"on\",\"led1\":\"off\",\"led2\":\"ON\",\"led3\":\"OFF\","
 	   " \"led4\":\"On\",\"led5\":\"Off\",\"led6\":\"on\",\"led7\":\"off\"}"},
+
+	  {"LCD config",
+	   0,
+	   "lcd",
+	   "{\"logo\": \"lowRISC\"}"},
 
 	  // Valid RGB LED config
 	  {"Valid RGB LED config",

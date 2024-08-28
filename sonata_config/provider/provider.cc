@@ -21,6 +21,8 @@ DEFINE_WRITE_CONFIG_CAPABILITY(RGB_LED_CONFIG)
 #define USER_LED_CONFIG "user_led"
 DEFINE_WRITE_CONFIG_CAPABILITY(USER_LED_CONFIG)
 
+#define LCD_CONFIG "lcd"
+DEFINE_WRITE_CONFIG_CAPABILITY(LCD_CONFIG)
 
 namespace
 {
@@ -50,6 +52,9 @@ namespace
 
 			topicMap[1].topic = "userled";
 			topicMap[1].cap   = WRITE_CONFIG_CAPABILITY(USER_LED_CONFIG);
+
+			topicMap[2].topic = "lcd";
+			topicMap[2].cap   = WRITE_CONFIG_CAPABILITY(LCD_CONFIG);
 
 			init = true;
 		}

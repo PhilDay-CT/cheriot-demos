@@ -4,3 +4,6 @@
 [submodule "network-stack"]
 	path = network-stack
 	url = https://github.com/CHERIoT-Platform/network-stack.git
+[submodule "sonata_config/display_drivers"]
+	path = sonata_config/third_party/display_drivers
+	url = https://github.com/engdoreis/display_drivers
