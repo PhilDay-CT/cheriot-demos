@@ -50,7 +50,7 @@ using Debug = ConditionalDebug<true, "Parser">;
 
 #include "../rgb_led/rgb_led.h"
 #define RGB_LED_CONFIG "rgb_led"
-DEFINE_PARSER_CONFIG_CAPABILITY(RGB_LED_CONFIG, sizeof(rgbLed::Config), 800);
+DEFINE_PARSER_CONFIG_CAPABILITY(RGB_LED_CONFIG, sizeof(rgbLed::Config), 1800);
 
 /**
  * Parse a json string into an RGB LED Config struct.

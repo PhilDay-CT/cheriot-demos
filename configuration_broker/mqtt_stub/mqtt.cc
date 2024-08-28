@@ -114,7 +114,7 @@ namespace
 	   0,
 	   "rgbled",
 	   "{\"led1\":{\"red\":0,  \"green\":86, \"blue\":164},"
-	   " \"led0\":{\"red\":155,\"green\":100,\"blue\":100}}"},
+	   " \"led0\":{\"red\":255,\"green\":200,\"blue\":200}}"},
 
 	  // Valid User LED config
 	  {"Valid User LED config",
@@ -159,32 +159,34 @@ namespace
  */
 void __cheri_compartment("mqtt") init()
 {
-	while (true) { 
-		for (auto &m : Messages)
-		{
-			Debug::log("-------- {} --------", m.description);
-			Debug::log("thread {} Send {} {}", thread_id_get(), m.topic, m.json);
-			auto res = updateConfig(m.topic, m.json);
-			Debug::Assert(res == m.expected, "Unexpected result {}", res);
-
-			// Give the consumers a chance to run
-			Timeout t1{MS_TO_TICKS(500)};
-			thread_sleep(&t1, ThreadSleepNoEarlyWake);
-		}
-
-		// try to update the RGB LED too quickly
-		auto m = Messages[0];
-		Debug::log("------- Update RGB LED --------");
+	for (auto &m : Messages)
+	{
+		Debug::log("-------- {} --------", m.description);
+		Debug::log("thread {} Send {} {}", thread_id_get(), m.topic, m.json);
 		auto res = updateConfig(m.topic, m.json);
-		Debug::Assert(res == 0, "Unexpected result {}", res);
+		Debug::Assert(res == m.expected, "Unexpected result {}", res);
 
-		Debug::log("------- Update RGB LED too quickly --------");
-		res = updateConfig(m.topic, m.json);
-		Debug::Assert(res == -EBUSY, "Unexpected result {}", res);
-
-		Debug::log("\n---- Finished ----");
-		
-		Timeout t1{MS_TO_TICKS(1000)};
+		// Give the consumers a chance to run
+		Timeout t1{MS_TO_TICKS(500)};
 		thread_sleep(&t1, ThreadSleepNoEarlyWake);
 	}
+
+	// try to update the RGB LED too quickly
+	auto m = Messages[0];
+	auto     system_tick = thread_systemtick_get();
+	uint64_t tick1 =
+	  (static_cast<uint64_t>(system_tick.hi) << 32) + system_tick.lo;
+	Debug::log("------- Update RGB LED {} {} --------", tick1, MS_TO_TICKS(400));
+
+	auto res = updateConfig(m.topic, m.json);
+	Debug::Assert(res == 0, "Unexpected result {}", res);
+
+	system_tick = thread_systemtick_get();
+	uint64_t tick2 =
+	  (static_cast<uint64_t>(system_tick.hi) << 32) + system_tick.lo;
+	Debug::log("------- Update RGB LED too quickly {} --------", tick2);
+	res = updateConfig(m.topic, m.json);
+	Debug::Assert(res == -EBUSY, "Unexpected result {}", res);
+
+	Debug::log("\n---- Finished ----");
 };

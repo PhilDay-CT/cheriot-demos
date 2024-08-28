@@ -12,27 +12,24 @@ includes(path.join(sdkdir, "lib/freestanding"),
          path.join(sdkdir, "lib/string"))
 
 option("board")
-    set_default("ibex-safe-simulator")
+    set_default("sonata")
 
 -- library for JSON parser   
 library("json_parser")
     set_default(false)
-    add_files("json_parser/json_parser.cc")
-    add_files("json_parser/core_json.cc")
+    add_files("../configuration_broker/json_parser/json_parser.cc")
+    add_files("../configuration_broker/json_parser/core_json.cc")
 
--- Library for Mocked logger service
-library("logger")
-    set_default(false)
-    add_files("logger/logger.cc")
-
--- Library for Mocked RGB LED config service
+-- Library for RGB LED config service
 library("rgb_led")
     set_default(false)
+    add_deps("cxxrt")
     add_files("rgb_led/rgb_led.cc")       
 
--- Library for Mocked User LED config service
+-- Library for User LED config service
 library("user_led")
     set_default(false)
+    add_deps("cxxrt")
     add_files("user_led/user_led.cc")       
 
 -- Mocked MQTT Client
@@ -50,9 +47,6 @@ compartment("provider")
     add_files("provider/provider.cc")
 
 -- Configuration JSON parser sandboxes
-compartment("parser_logger")
-    add_files("parser/parse_logger.cc")
-
 compartment("parser_rgb_led")
     add_files("parser/parse_rgb_led.cc")
 
@@ -66,18 +60,16 @@ compartment("consumer2")
     add_files("consumers/consumer2.cc")
 
 -- Firmware image for the example.
-firmware("config-broker-ibex-sim")
+firmware("config-broker-sonata")
     add_deps("freestanding", "debug", "string")
     -- libraries
     add_deps("json_parser")
-    add_deps("logger")
     add_deps("rgb_led")
     add_deps("user_led")
     -- compartments
     add_deps("mqtt")
     add_deps("provider")
     add_deps("config_broker")
-    add_deps("parser_logger")
     add_deps("parser_rgb_led")
     add_deps("parser_user_led")
     add_deps("consumer1")
@@ -102,7 +94,7 @@ firmware("config-broker-ibex-sim")
                 priority = 2,
                 entry_point = "init",
                 stack_size = 0x500,
-                trusted_stack_frames = 4
+                trusted_stack_frames = 8
             },
             {
                 -- Thread to consume config values.
@@ -111,7 +103,7 @@ firmware("config-broker-ibex-sim")
                 priority = 2,
                 entry_point = "init",
                 stack_size = 0x500,
-                trusted_stack_frames = 4
+                trusted_stack_frames = 8
             },
         }, {expand = false})
     end)

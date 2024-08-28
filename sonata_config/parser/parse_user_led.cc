@@ -37,8 +37,10 @@
 #include <string.h>
 #include <thread.h>
 
+#include <magic_enum/magic_enum.hpp>
+
 // Expose debugging features unconditionally for this compartment.
-using Debug = ConditionalDebug<true, "Logger Parser">;
+using Debug = ConditionalDebug<true, "Parser">;
 
 #include "parser.h"
 #include "parser_helper.h"
@@ -46,16 +48,17 @@ using Debug = ConditionalDebug<true, "Logger Parser">;
 // Set for Items we are allowed to register a parser for
 #include "../config_broker/config_broker.h"
 
-#include "../logger/logger.h"
-#define LOGGER_CONFIG "logger"
-DEFINE_PARSER_CONFIG_CAPABILITY(LOGGER_CONFIG, sizeof(LoggerConfig), 500);
+#include "../user_led/user_led.h"
+#define USER_LED_CONFIG "user_led"
+DEFINE_PARSER_CONFIG_CAPABILITY(USER_LED_CONFIG, sizeof(userLed::Config), 400);
+
 
 /**
- * Parse a json string into a LoggerConfig struct.
+ * Parse a json string into an User LED Config struct.
  */
-int __cheri_callback parse_logger_config(const char *json, void *dst)
+int __cheri_callback parse_User_LED_config(const char *json, void *dst)
 {
-	auto        *config = static_cast<LoggerConfig *>(dst);
+	auto        *config = static_cast<userLed::Config *>(dst);
 	JSONStatus_t result;
 
 	auto initial_quota = heap_quota_remaining(MALLOC_CAPABILITY);
@@ -68,12 +71,16 @@ int __cheri_callback parse_logger_config(const char *json, void *dst)
 		return -1;
 	}
 
-	// query the individual values and populate the logger config struct
+	// query the individual values and populate the config struct
 	bool parsed = true;
-	parsed = parsed && get_string(json, "host.address", config->host.address);
-	parsed =
-	  parsed && get_number<uint16_t>(json, "host.port", &config->host.port);
-	parsed = parsed && get_enum<logLevel>(json, "level", &config->level);
+	parsed      = parsed && get_enum<userLed::State>(json, "led0", &config->led0);
+	parsed      = parsed && get_enum<userLed::State>(json, "led1", &config->led1);
+	parsed      = parsed && get_enum<userLed::State>(json, "led2", &config->led2);
+	parsed      = parsed && get_enum<userLed::State>(json, "led3", &config->led3);
+	parsed      = parsed && get_enum<userLed::State>(json, "led4", &config->led4);
+	parsed      = parsed && get_enum<userLed::State>(json, "led5", &config->led5);
+	parsed      = parsed && get_enum<userLed::State>(json, "led6", &config->led6);
+	parsed      = parsed && get_enum<userLed::State>(json, "led7", &config->led7);
 
 	// Free any heap the parser might have left allocated.
 	// Calling heap_free_all() is quite expensive as it has to walk all
@@ -99,14 +106,15 @@ int __cheri_callback parse_logger_config(const char *json, void *dst)
  * just to run this which then blocks we expose it as method for
  * the Broker to call when the first item is published.
  */
-int __cheri_compartment("parser_logger") parse_logger_init()
+int __cheri_compartment("parser_user_led") parse_user_led_init()
 {
-	auto res =
-	  set_parser(PARSER_CONFIG_CAPABILITY(LOGGER_CONFIG), parse_logger_config);
+	// USER LED Config Parser
+	auto res = set_parser(PARSER_CONFIG_CAPABILITY(USER_LED_CONFIG),
+	                      parse_User_LED_config);
 
 	if (res < 0)
 	{
-		Debug::log("Failed to register parser for logger");
+		Debug::log("Failed to register parser for user led");
 	}
 
 	return res;
