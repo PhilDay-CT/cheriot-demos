@@ -17,7 +17,7 @@
 DEFINE_READ_CONFIG_CAPABILITY(USER_LED_CONFIG)
 
 // Expose debugging features unconditionally for this compartment.
-using Debug = ConditionalDebug<true, "Consumer #2">;
+using Debug = ConditionalDebug<false, "Consumer #2">;
 
 #include "../user_led/user_led.h"
 
@@ -182,11 +182,11 @@ void __cheri_compartment("consumer2") init()
 			Debug::log(
 			  "thread {} wait timeout {}", thread_id_get(), num_timeouts);
 			// For the demo exit the thread when we stop getting updates
-			if (num_timeouts >= 2)
-			{
-				Debug::log("thread {} exiting as no activity", thread_id_get());
-				break;
-			}
+			//if (num_timeouts >= 2)
+			//{
+			//	Debug::log("thread {} exiting as no activity", thread_id_get());
+			//	break;
+			//}
 		}
 		else
 		{

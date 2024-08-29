@@ -7,7 +7,7 @@
 #include <platform-rgbctrl.hh>
 
 // Expose debugging features unconditionally for this library.
-using Debug = ConditionalDebug<true, "RGB LED">;
+using Debug = ConditionalDebug<false, "RGB LED">;
 
 
 /**

@@ -7,7 +7,7 @@
 #include <platform-gpio.hh>
 
 // Expose debugging features unconditionally for this library.
-using Debug = ConditionalDebug<true, "USER LED">;
+using Debug = ConditionalDebug<false, "USER LED">;
 
 
 void setLED(int id, userLed::State state)

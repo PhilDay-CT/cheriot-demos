@@ -87,6 +87,7 @@ firmware("config-broker-sonata")
     add_deps("parser_lcd")
     add_deps("consumer1")
     add_deps("consumer2")
+    add_deps("reader")
     on_load(function(target)
         target:values_set("board", "$(board)")
         target:values_set("threads", {
@@ -94,7 +95,7 @@ firmware("config-broker-sonata")
                 -- Thread to set config values.
                 -- Starts and loops in the mqtt
                 -- compartment.
-                compartment = "mqtt",
+                compartment = "reader",
                 priority = 1,
                 entry_point = "init",
                 stack_size = 0x700,
@@ -121,19 +122,25 @@ firmware("config-broker-sonata")
         }, {expand = false})
     end)
 
--- A simple demo using only devices on the Sonata board
-firmware("sonata_reader")
-    add_deps("freestanding", "reader")
-    add_deps("lcd")
-    on_load(function(target)
-        target:values_set("board", "$(board)")
-        target:values_set("threads", {
-            {
-                compartment = "reader",
-                priority = 2,
-                entry_point = "init",
-                stack_size = 0x400,
-                trusted_stack_frames = 3
-            },
-        }, {expand = false})
-    end)
+-- Firmware image for the example.
+--xfirmware("sonata-reader")
+--x    add_deps("freestanding", "debug", "string")
+--x    -- libraries
+--x    add_deps("lcd")
+--x    -- compartments
+--x    add_deps("reader")
+--x    on_load(function(target)
+--x        target:values_set("board", "$(board)")
+--x        target:values_set("threads", {
+--x            {
+--x                -- Thread to set config values.
+--x                -- Starts and loops in the mqtt
+--x                -- compartment.
+--x                compartment = "reader",
+--x                priority = 1,
+--x                entry_point = "init",
+--x                stack_size = 0x700,
+--x                trusted_stack_frames = 8
+--x            },
+--x        }, {expand = false})
+--x    end)
