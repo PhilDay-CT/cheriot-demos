@@ -65,6 +65,11 @@ compartment("consumer1")
 compartment("consumer2")
     add_files("consumers/consumer2.cc")
 
+-- reader test    
+compartment("reader")
+    add_deps("debug")
+    add_files("reader/reader.cc")
+
 -- Firmware image for the example.
 firmware("config-broker-sonata")
     add_deps("freestanding", "debug", "string")
@@ -116,4 +121,19 @@ firmware("config-broker-sonata")
         }, {expand = false})
     end)
 
-
+-- A simple demo using only devices on the Sonata board
+firmware("sonata_reader")
+    add_deps("freestanding", "reader")
+    add_deps("lcd")
+    on_load(function(target)
+        target:values_set("board", "$(board)")
+        target:values_set("threads", {
+            {
+                compartment = "reader",
+                priority = 2,
+                entry_point = "init",
+                stack_size = 0x400,
+                trusted_stack_frames = 3
+            },
+        }, {expand = false})
+    end)
