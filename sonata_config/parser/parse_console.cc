@@ -41,6 +41,7 @@
 
 // Expose debugging features unconditionally for this compartment.
 using Debug = ConditionalDebug<true, "Parser">;
+#include "../console/console.h"
 
 #include "parser.h"
 #include "parser_helper.h"
@@ -48,17 +49,16 @@ using Debug = ConditionalDebug<true, "Parser">;
 // Set for Items we are allowed to register a parser for
 #include "../config_broker/config_broker.h"
 
-#include "../lcd/lcd.h"
-#define LCD_CONFIG "lcd"
-DEFINE_PARSER_CONFIG_CAPABILITY(LCD_CONFIG, sizeof(LCD::Config), 400);
+#define CONSOLE_CONFIG "console"
+DEFINE_PARSER_CONFIG_CAPABILITY(CONSOLE_CONFIG, sizeof(console::Config), 400);
 
 
 /**
  * Parse a json string into an LCD Config struct.
  */
-int __cheri_callback parse_lcd_config(const char *json, void *dst)
+int __cheri_callback parse_console_config(const char *json, void *dst)
 {
-	auto        *config = static_cast<LCD::Config *>(dst);
+	auto        *config = static_cast<console::Config *>(dst);
 	JSONStatus_t result;
 
 	auto initial_quota = heap_quota_remaining(MALLOC_CAPABILITY);
@@ -68,12 +68,13 @@ int __cheri_callback parse_lcd_config(const char *json, void *dst)
 	if (result != JSONSuccess)
 	{
 		Debug::log("thread {} Invalid JSON {}", thread_id_get(), json);
+		console::error("Invalid JSON", json);
 		return -1;
 	}
 
 	// query the individual values and populate the config struct
 	bool parsed = true;
-	parsed = parsed && get_enum<LCD::Logo>(json, "logo", &config->logo);
+	parsed = parsed && get_string(json, "header", config->header);
 	
 	// Free any heap the parser might have left allocated.
 	// Calling heap_free_all() is quite expensive as it has to walk all
@@ -99,15 +100,15 @@ int __cheri_callback parse_lcd_config(const char *json, void *dst)
  * just to run this which then blocks we expose it as method for
  * the Broker to call when the first item is published.
  */
-int __cheri_compartment("parser_lcd") parse_lcd_init()
+int __cheri_compartment("parser_console") parse_console_init()
 {
 	// USER LED Config Parser
-	auto res = set_parser(PARSER_CONFIG_CAPABILITY(LCD_CONFIG),
-	                      parse_lcd_config);
+	auto res = set_parser(PARSER_CONFIG_CAPABILITY(CONSOLE_CONFIG),
+	                      parse_console_config);
 
 	if (res < 0)
 	{
-		Debug::log("Failed to register parser for lcd");
+		Debug::log("Failed to register parser for console");
 	}
 
 	return res;

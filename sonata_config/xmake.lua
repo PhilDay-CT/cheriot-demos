@@ -35,9 +35,22 @@ library("user_led")
     add_deps("cxxrt")
     add_files("user_led/user_led.cc")       
 
+-- LCD Console
+compartment("console")
+    add_deps("cxxrt")
+    add_files("console/console.cc")
+
+-- LCD Console Test
+compartment("console_test")
+    add_files("console_test/console_test.cc")
+
 -- Mocked MQTT Client
-compartment("mqtt")
-    add_files("mqtt_stub/mqtt.cc")
+compartment("mqtt_stub")
+    add_files("mqtt_stub/mqtt_stub.cc")
+
+-- MQTT via uart
+compartment("mqtt_uart")
+    add_files("mqtt_uart/mqtt_uart.cc")
 
 -- Configuration Broker
 debugOption("config_broker")
@@ -56,19 +69,14 @@ compartment("parser_rgb_led")
 compartment("parser_user_led")
     add_files("parser/parse_user_led.cc")
 
-compartment("parser_lcd")
-    add_files("parser/parse_lcd.cc")
+compartment("parser_console")
+    add_files("parser/parse_console.cc")
 
 -- Consumers
 compartment("consumer1")
     add_files("consumers/consumer1.cc")
 compartment("consumer2")
     add_files("consumers/consumer2.cc")
-
--- reader test    
-compartment("reader")
-    add_deps("debug")
-    add_files("reader/reader.cc")
 
 -- Firmware image for the example.
 firmware("config-broker-sonata")
@@ -79,15 +87,16 @@ firmware("config-broker-sonata")
     add_deps("user_led")
     add_deps("lcd")
     -- compartments
-    add_deps("mqtt")
+    add_deps("console")
+    add_deps("mqtt_stub")
+    add_deps("mqtt_uart")
     add_deps("provider")
     add_deps("config_broker")
     add_deps("parser_rgb_led")
     add_deps("parser_user_led")
-    add_deps("parser_lcd")
+    add_deps("parser_console")
     add_deps("consumer1")
     add_deps("consumer2")
-    add_deps("reader")
     on_load(function(target)
         target:values_set("board", "$(board)")
         target:values_set("threads", {
@@ -95,7 +104,7 @@ firmware("config-broker-sonata")
                 -- Thread to set config values.
                 -- Starts and loops in the mqtt
                 -- compartment.
-                compartment = "reader",
+                compartment = "mqtt_stub",
                 priority = 1,
                 entry_point = "init",
                 stack_size = 0x700,
@@ -121,6 +130,31 @@ firmware("config-broker-sonata")
             },
         }, {expand = false})
     end)
+
+-- Firmware image for the example.
+firmware("sonata-console")
+    add_deps("freestanding", "debug", "string")
+    -- libraries
+    add_deps("lcd")
+    -- compartments
+    add_deps("console")
+    add_deps("console_test")
+    on_load(function(target)
+        target:values_set("board", "$(board)")
+        target:values_set("threads", {
+            {
+                -- Thread to set config values.
+                -- Starts and loops in the mqtt
+                -- compartment.
+                compartment = "console_test",
+                priority = 1,
+                entry_point = "init",
+                stack_size = 0x700,
+                trusted_stack_frames = 8
+            },
+        }, {expand = false})
+    end)
+
 
 -- Firmware image for the example.
 --xfirmware("sonata-reader")

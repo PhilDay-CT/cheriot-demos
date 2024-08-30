@@ -34,6 +34,7 @@ bool get_string(const char *json, const char *key, char *dst)
 	if (result != JSONSuccess)
 	{
 		Debug::log("Missing key {} in {}", key, json);
+
 		return false;
 	}
 
@@ -64,6 +65,7 @@ bool get_number(const char *json, const char *key, T *dst)
 	if (result != JSONSuccess)
 	{
 		Debug::log("Missing key {} in {}", key, json);
+		console::error("Missing key", key);
 		return false;
 	}
 
@@ -87,6 +89,7 @@ bool get_number(const char *json, const char *key, T *dst)
 	if (!isNumber)
 	{
 		Debug::log("{} is not a number", key);
+		console::error(key, "is not a number");
 		return false;
 	}
 
@@ -95,6 +98,7 @@ bool get_number(const char *json, const char *key, T *dst)
 	if (*dst != acc)
 	{
 		Debug::log("Value truncated {} -> {}", acc, *dst);
+		console::error("Value truncated", key);
 		return false;
 	}
 
@@ -122,6 +126,7 @@ bool get_enum(const char *json, const char *key, T *dst)
 	if (result != JSONSuccess)
 	{
 		Debug::log("Missing key {} in {}", key, json);
+		console::error("Missing key", key);
 		return false;
 	}
 
@@ -131,6 +136,7 @@ bool get_enum(const char *json, const char *key, T *dst)
 	if (!m.has_value())
 	{
 		Debug::log("Invalid emum value {} for {}", enum_string, key);
+		console::error("Invalid emum", enum_string.c_str());
 		return false;
 	}
 

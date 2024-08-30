@@ -14,16 +14,15 @@
 #include <type_traits>
 #include <vector>
 
-#include "../sonata_lcd/lcd.hh"
 #include "../provider/provider.h"
+#include "../console/console.h"
 
-
-/// Expose debugging features unconditionally for this compartment.
-using Debug = ConditionalDebug<true, "Reader">;
 using CHERI::Capability;
 
-#define debug(s) lcd.draw_str({x, y+=10}, s, Color::White,Color::Black)
-
+//
+// Helper to generate a hex string for debugging
+// what we actually receive
+//
 void hex(char *buf, int s)
 {
 	const char          Hexdigits[] = "0123456789abcdef";
@@ -34,7 +33,7 @@ void hex(char *buf, int s)
 }
 
 /// Thread entry point.
-void __cheri_compartment("reader")
+void __cheri_compartment("mqtt_uart")
 init()
 {
 
@@ -45,7 +44,7 @@ init()
 	// Used to control where debug goes in the lcd 
 	uint32_t x=10;
 	uint32_t y=0;
-	debug("Starting ...");
+	console::print("Starting ...");
 				
 	auto uart = MMIO_CAPABILITY(Uart, uart);
 
@@ -66,7 +65,7 @@ init()
 				char *mi=message;
 				
 				// Get the topic
-				debug("Ready ...");
+				console::print("Ready ...");
 
 				while (true) {
 					char c;
@@ -89,9 +88,9 @@ init()
 					*mi++ = c;
 				}
 				y=30;
-				debug("---");
-				debug(topic);
-				debug(message);
+				console::print("---");
+				console::print(topic);
+				console::print(message);
 				updateConfig(topic, message);
 
 				// Reset the buffers

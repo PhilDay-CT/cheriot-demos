@@ -7,8 +7,7 @@
 #include <thread.h>
 #include <tick_macros.h>
 
-// Expose debugging features unconditionally for this compartment.
-using Debug = ConditionalDebug<false, "Provider">;
+#include "../console/console.h"
 
 /**
  * Define the sealed capabilites for each of the configuration
@@ -21,8 +20,8 @@ DEFINE_WRITE_CONFIG_CAPABILITY(RGB_LED_CONFIG)
 #define USER_LED_CONFIG "user_led"
 DEFINE_WRITE_CONFIG_CAPABILITY(USER_LED_CONFIG)
 
-#define LCD_CONFIG "lcd"
-DEFINE_WRITE_CONFIG_CAPABILITY(LCD_CONFIG)
+#define CONSOLE_CONFIG "console"
+DEFINE_WRITE_CONFIG_CAPABILITY(CONSOLE_CONFIG)
 
 namespace
 {
@@ -44,17 +43,14 @@ namespace
 		static bool init = false;
 		if (!init)
 		{
-			//topicMap[0].topic = "logger";
-			//topicMap[0].cap   = WRITE_CONFIG_CAPABILITY(LOGGER_CONFIG);
+			topicMap[0].topic = "console";
+			topicMap[0].cap   = WRITE_CONFIG_CAPABILITY(CONSOLE_CONFIG);
 
-			topicMap[0].topic = "rgbled";
-			topicMap[0].cap   = WRITE_CONFIG_CAPABILITY(RGB_LED_CONFIG);
+			topicMap[1].topic = "rgbled";
+			topicMap[1].cap   = WRITE_CONFIG_CAPABILITY(RGB_LED_CONFIG);
 
-			topicMap[1].topic = "userled";
-			topicMap[1].cap   = WRITE_CONFIG_CAPABILITY(USER_LED_CONFIG);
-
-			topicMap[2].topic = "lcd";
-			topicMap[2].cap   = WRITE_CONFIG_CAPABILITY(LCD_CONFIG);
+			topicMap[2].topic = "userled";
+			topicMap[2].cap   = WRITE_CONFIG_CAPABILITY(USER_LED_CONFIG);
 
 			init = true;
 		}
@@ -71,8 +67,6 @@ namespace
 int __cheri_compartment("provider")
   updateConfig(const char *topic, const char *message)
 {
-	Debug::log("thread {} got {} on {}", thread_id_get(), message, topic);
-
 	// Initalise the topic map
 	set_up_topic_map();
 
@@ -89,9 +83,7 @@ int __cheri_compartment("provider")
 			res   = set_config(t.cap, message);
 			if (res < 0)
 			{
-				Debug::log("thread {} Failed to set value for {}",
-				           thread_id_get(),
-				           t.cap);
+				console::error("Failed to set", t.topic);
 			}
 			break;
 		}
@@ -99,8 +91,7 @@ int __cheri_compartment("provider")
 
 	if (!found)
 	{
-		Debug::log(
-		  "thread {} Unexpected Message topic {}", thread_id_get(), topic);
+		console::error("Unexpected topic", topic);
 	}
 
 	return res;

@@ -40,7 +40,8 @@
 #include <magic_enum/magic_enum.hpp>
 
 // Expose debugging features unconditionally for this compartment.
-using Debug = ConditionalDebug<true, "Parser">;
+using Debug = ConditionalDebug<false, "Parser">;
+#include "../console/console.h"
 
 #include "parser.h"
 #include "parser_helper.h"
@@ -67,6 +68,7 @@ int __cheri_callback parse_RGB_LED_config(const char *json, void *dst)
 	if (result != JSONSuccess)
 	{
 		Debug::log("thread {} Invalid JSON {}", thread_id_get(), json);
+		console::error("Invalid JSON", json);
 		return -1;
 	}
 
