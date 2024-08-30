@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <interrupt.h>
 #include <platform-gpio.hh>
+#include <platform-entropy.hh>
 #include <riscvreg.h>
 #include <thread.h>
 #include <tick_macros.h>
@@ -25,25 +26,32 @@ using CHERI::Capability;
 //
 void hex(char *buf, int s)
 {
-	const char          Hexdigits[] = "0123456789abcdef";
+	const char Hexdigits[] = "0123456789abcdef";
 	buf[1] = Hexdigits[s & 0xf];
 	s >>= 4;
 	buf[0] = Hexdigits[s & 0xf];
 	buf[2] = 0;
 }
 
+char name[10] = "Sonata-xx";
+
 /// Thread entry point.
 void __cheri_compartment("mqtt_uart")
 init()
 {
-
-	using namespace sonata::lcd;
-
-	auto lcd  = SonataLcd();
+	// Allocate a name
+	{
+		EntropySource  entropy;
+		
+		const char Hexdigits[] = "0123456789abcdef";
+		auto id = entropy();
+		
+		name[8] = Hexdigits[id & 0xf];
+		id >>= 4;
+		name[7] = Hexdigits[id & 0xf];
+	}
 	
-	// Used to control where debug goes in the lcd 
-	uint32_t x=10;
-	uint32_t y=0;
+
 	console::print("Starting ...");
 				
 	auto uart = MMIO_CAPABILITY(Uart, uart);
@@ -87,7 +95,6 @@ init()
 					}
 					*mi++ = c;
 				}
-				y=30;
 				console::print("---");
 				console::print(topic);
 				console::print(message);

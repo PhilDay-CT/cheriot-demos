@@ -47,6 +47,7 @@
 #include <errno.h>
 #include <fail-simulator-on-error.h>
 #include <thread.h>
+#include <platform-entropy.hh>
 
 #include "../provider/provider.h"
 
@@ -135,6 +136,8 @@ namespace
 
 } // namespace
 
+char name[10] = "Sonata-xx";
+
 /**
  * Thread Entry point for the MQTT stub.  The thread "publishes" each message by
  * calling the Provider's UpdateConfig() method as if the Provider has
@@ -145,6 +148,21 @@ namespace
 void __cheri_compartment("mqtt_stub") init()
 {
 	Debug::log("*** MQTT Started *** thread {} ", thread_id_get());
+
+	// Allocate a name
+	{
+		EntropySource  entropy;
+		
+		const char Hexdigits[] = "0123456789abcdef";
+		auto id = entropy();
+		Debug::log("ID: {}", id);
+
+		name[8] = Hexdigits[id & 0xf];
+		id >>= 4;
+		name[7] = Hexdigits[id & 0xf];
+	}
+	Debug::log("Name: {}", (const char *)name);
+
 	console::print("Starting ...");
 	while (true) { 
 		for (auto &m : Messages)
