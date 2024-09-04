@@ -46,10 +46,10 @@ namespace
 			topicMap[0].topic = "console";
 			topicMap[0].cap   = WRITE_CONFIG_CAPABILITY(CONSOLE_CONFIG);
 
-			topicMap[1].topic = "rgbled";
+			topicMap[1].topic = "rgb_LED";
 			topicMap[1].cap   = WRITE_CONFIG_CAPABILITY(RGB_LED_CONFIG);
 
-			topicMap[2].topic = "userled";
+			topicMap[2].topic = "user_LED";
 			topicMap[2].cap   = WRITE_CONFIG_CAPABILITY(USER_LED_CONFIG);
 
 			init = true;

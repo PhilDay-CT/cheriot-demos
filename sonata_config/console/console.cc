@@ -40,9 +40,9 @@ void _print(const char *line, const char *error, Color fg, Color bg, bool header
 	if (!init) {
 		init = true;
 		
-		auto screen   = Rect::from_point_and_size(Point::ORIGIN, {57, 13});
-		auto logoRect = screen.centered_subrect({57, 13});
-		lcd.draw_image_rgb565(screen, CT_Banner);
+		auto logoRect1 = Rect::from_point_and_size({0, 0}, {48, 13});
+		lcd.draw_image_rgb565(logoRect1, CT_Banner);
+		
 		lcd.draw_line({0,14}, {lcd.resolution().width, 14}, Color::Black);
 
 		for (int i=0; i<LINES; i++) {
@@ -58,7 +58,7 @@ void _print(const char *line, const char *error, Color fg, Color bg, bool header
 		lines[0].bg = Color::White;
 		next=1; 
 	}
-
+	
 	if (header) {
 		auto h = strlen(line);
 		for (int i=0; i<COLS; i++) {
@@ -97,7 +97,7 @@ void _print(const char *line, const char *error, Color fg, Color bg, bool header
 		next = 0;
 	}
 
-	uint32_t y = 16;
+	uint32_t y = 15;
 	int l = top;
 		
 	for (int i=0; i<LINES; i++) {

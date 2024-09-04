@@ -104,7 +104,7 @@ firmware("config-broker-sonata")
                 -- Thread to set config values.
                 -- Starts and loops in the mqtt
                 -- compartment.
-                compartment = "mqtt_stub",
+                compartment = "mqtt_uart",
                 priority = 1,
                 entry_point = "init",
                 stack_size = 0x700,
