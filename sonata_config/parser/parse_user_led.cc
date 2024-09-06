@@ -40,7 +40,7 @@
 #include <magic_enum/magic_enum.hpp>
 
 // Expose debugging features unconditionally for this compartment.
-using Debug = ConditionalDebug<false, "Parser">;
+using Debug = ConditionalDebug<true, "Parser">;
 #include "../console/console.h"
 
 #include "parser.h"

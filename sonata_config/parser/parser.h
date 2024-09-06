@@ -11,14 +11,14 @@
 // into a single inline method for it to call.
 //
 int __cheri_compartment("parser_rgb_led") parse_rgb_led_init();
-//int __cheri_compartment("parser_user_led") parse_user_led_init();
-//int __cheri_compartment("parser_console") parse_console_init();
+int __cheri_compartment("parser_user_led") parse_user_led_init();
+int __cheri_compartment("parser_console") parse_console_init();
 
 inline int parser_init()
 {
 	auto res = parse_rgb_led_init();
-//	res      = std::min(res, parse_user_led_init());
-//	res      = std::min(res, parse_console_init());
+	res      = std::min(res, parse_user_led_init());
+	res      = std::min(res, parse_console_init());
 
 	return res;
 }

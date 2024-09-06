@@ -15,6 +15,7 @@
 #include "mosquitto.org.h"
 
 #include "../console/console.h"
+#include "../provider/provider.h"
 
 using CHERI::Capability;
 
@@ -52,27 +53,21 @@ void __cheri_callback publishCallback(const char *topic,
                                       const void *payload,
                                       size_t      payloadLength)
 {
-	// FIXME: Work out why != doesn't work (non-mangled memcmp being inserted)
-	if (memcmp(topic, ::topic.data(), std::min(topicLength, ::topic.size())) !=
-	    0)
-	{
-		Debug::log(
-		  "Received a publish message on topic '{}', but expected '{}'",
-		  std::string_view{topic, topicLength},
-		  ::topic);
-		return;
-	}
-	if (payloadLength < 3)
-	{
-		Debug::log("Payload is too short to be a colour");
-		return;
-	}
-	auto *colours = static_cast<const uint8_t *>(payload);
-	Debug::log("Got topic: {} length: {}", topic, topicLength);
+	const char *conf_id = topic + ::topic.size()-1;
+	Debug::log("topic: {} frag: {}", topic, conf_id);
+
+	// we need a null terminates string to parse
+	auto json = (char*)malloc(payloadLength+1);
+	std::memcpy((void *)json, payload, payloadLength);
+	json[payloadLength] = 0;
 	
-	Debug::log("Got new value {} {} {}", colours[0], colours[1], colours[2]);
+	Debug::log("Got topic: {} json {}", topic, (const char*)json);
 	console::print("---");
-	console::print(topic);
+	console::print(conf_id);
+	console::print(json);
+	updateConfig(conf_id, json);
+
+	free(json);
 }
 
 void __cheri_compartment("mqtt") init()
@@ -104,22 +99,26 @@ void __cheri_compartment("mqtt") init()
 	}
 
 	constexpr std::string_view TopicPrefix{"CT-Sonata/"};
-	topic.reserve(TopicPrefix.size() + 8);
+	topic.reserve(TopicPrefix.size() + 8 + 2);
 	topic.append(TopicPrefix.data(), TopicPrefix.size());
-#if 1
+#if 0
 	topic.append("testing");
 #else
 
+	char id[9];
 	{
 		EntropySource entropySource;
 		for (int i = 0; i < 8; i++)
 		{
-			topic.push_back('a' + entropySource() % 26);
+			id[i] = ('a' + entropySource() % 26);
 		}
 	}
 #endif
-
-	console::header(topic.c_str());
+	topic.append(id);
+	topic.append("/#");
+	
+	id[8] = 0;
+	console::header(id);
 	while (true)
 	{
 

@@ -28,16 +28,16 @@ library("json_parser")
     add_files("../configuration_broker/json_parser/core_json.cc")
 
 -- Library for RGB LED config service
---!library("rgb_led")
---!    set_default(false)
---!    add_deps("cxxrt")
---!    add_files("rgb_led/rgb_led.cc")       
+library("rgb_led")
+    set_default(false)
+    add_deps("cxxrt")
+    add_files("rgb_led/rgb_led.cc")       
 
 -- Library for User LED config service
---!library("user_led")
---!    set_default(false)
---!    add_deps("cxxrt")
---!    add_files("user_led/user_led.cc")       
+library("user_led")
+    set_default(false)
+    add_deps("cxxrt")
+    add_files("user_led/user_led.cc")       
 
 -- LCD Console
 compartment("console")
@@ -74,24 +74,24 @@ compartment("config_broker")
     add_files("config_broker/config_broker.cc")
 
 -- Configuration Provider
---!compartment("provider")
---!    add_files("provider/provider.cc")
+compartment("provider")
+    add_files("provider/provider.cc")
 
 -- Configuration JSON parser sandboxes
 compartment("parser_rgb_led")
     add_files("parser/parse_rgb_led.cc")
 
---!compartment("parser_user_led")
---!    add_files("parser/parse_user_led.cc")
+compartment("parser_user_led")
+    add_files("parser/parse_user_led.cc")
 
---!compartment("parser_console")
---!    add_files("parser/parse_console.cc")
+compartment("parser_console")
+    add_files("parser/parse_console.cc")
 
 -- Consumers
---!compartment("consumer1")
---!    add_files("consumers/consumer1.cc")
---!compartment("consumer2")
---!    add_files("consumers/consumer2.cc")
+compartment("consumer1")
+    add_files("consumers/consumer1.cc")
+compartment("consumer2")
+    add_files("consumers/consumer2.cc")
 
 -- Firmware image for the example.
 firmware("config-broker-sonata")
@@ -102,7 +102,7 @@ firmware("config-broker-sonata")
     add_deps("console")
 
     --
-    -- MQTT Receivers
+    -- MQTT Receivers - select 1
     --     mqtt_stub  loops though test messages
     --     mqtt_uart  takes messages from the uart
     --     mqtt       uses a real broker
@@ -111,7 +111,7 @@ firmware("config-broker-sonata")
 --!    add_deps("mqtt_uart")
 
     -- Provider (the link between MQTT and the Connfig Broker) 
---!    add_deps("provider")
+    add_deps("provider")
 
     -- Configuration Broker
     add_deps("config_broker")
@@ -119,19 +119,19 @@ firmware("config-broker-sonata")
     -- Parsers for the different Config types
     add_deps("json_parser")
     add_deps("parser_rgb_led")
---!    add_deps("parser_user_led")
---!    add_deps("parser_console")
+    add_deps("parser_user_led")
+    add_deps("parser_console")
 
     -- Consumer 1
     --   RGB LED
     --   Console
---    add_deps("rgb_led")
---    add_deps("consumer1")
+    add_deps("rgb_led")
+    add_deps("consumer1")
 
     -- Consumer 2
     --   User LEDs
---    add_deps("user_led")
---    add_deps("consumer2")
+    add_deps("user_led")
+    add_deps("consumer2")
 
     on_load(function(target)
         target:values_set("board", "$(board)")
@@ -146,24 +146,24 @@ firmware("config-broker-sonata")
                 stack_size = 8160,
                 trusted_stack_frames = 8
             },
---!            {
---!                -- Thread to consume config values.
---!                -- Starts and loops in consumer1
---!                compartment = "consumer1",
---!                priority = 2,
---!                entry_point = "init",
---!                stack_size = 0x500,
---!               trusted_stack_frames = 8
---!            },
---!            {
---!                -- Thread to consume config values.
---!                -- Starts and loops in consumer2
---!                compartment = "consumer2",
---!                priority = 2,
---!                entry_point = "init",
---!                stack_size = 0x500,
---!                trusted_stack_frames = 8
---!            },
+            {
+                -- Thread to consume config values.
+                -- Starts and loops in consumer1
+                compartment = "consumer1",
+                priority = 2,
+                entry_point = "init",
+                stack_size = 0x500,
+               trusted_stack_frames = 8
+            },
+            {
+                -- Thread to consume config values.
+                -- Starts and loops in consumer2
+                compartment = "consumer2",
+                priority = 2,
+                entry_point = "init",
+                stack_size = 0x500,
+                trusted_stack_frames = 8
+            },
             {
                 -- TCP/IP stack thread.
                 compartment = "TCPIP",

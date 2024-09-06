@@ -7,7 +7,8 @@
 #include <thread.h>
 #include <tick_macros.h>
 
-#include "../console/console.h"
+// Expose debugging features unconditionally for this compartment.
+using Debug = ConditionalDebug<true, "Provider">;
 
 /**
  * Define the sealed capabilites for each of the configuration
@@ -67,6 +68,8 @@ namespace
 int __cheri_compartment("provider")
   updateConfig(const char *topic, const char *message)
 {
+	Debug::log("thread {} got {} on {}", thread_id_get(), message, topic);
+
 	// Initalise the topic map
 	set_up_topic_map();
 
@@ -83,7 +86,9 @@ int __cheri_compartment("provider")
 			res   = set_config(t.cap, message);
 			if (res < 0)
 			{
-				console::error("Failed to set", t.topic);
+				Debug::log("thread {} Failed to set value for {}",
+				           thread_id_get(),
+				           t.cap);
 			}
 			break;
 		}
@@ -91,7 +96,8 @@ int __cheri_compartment("provider")
 
 	if (!found)
 	{
-		console::error("Unexpected topic", topic);
+		Debug::log(
+		  "thread {} Unexpected Message topic {}", thread_id_get(), topic);
 	}
 
 	return res;
