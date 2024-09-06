@@ -141,7 +141,7 @@ firmware("config-broker-sonata")
                 -- Starts and loops in the mqtt
                 -- compartment.
                 compartment = "mqtt",
-                priority = 1,
+                priority = 2,
                 entry_point = "init",
                 stack_size = 8160,
                 trusted_stack_frames = 8
@@ -150,7 +150,7 @@ firmware("config-broker-sonata")
                 -- Thread to consume config values.
                 -- Starts and loops in consumer1
                 compartment = "consumer1",
-                priority = 2,
+                priority = 1,
                 entry_point = "init",
                 stack_size = 0x500,
                trusted_stack_frames = 8
@@ -159,7 +159,7 @@ firmware("config-broker-sonata")
                 -- Thread to consume config values.
                 -- Starts and loops in consumer2
                 compartment = "consumer2",
-                priority = 2,
+                priority = 1,
                 entry_point = "init",
                 stack_size = 0x500,
                 trusted_stack_frames = 8
@@ -167,7 +167,7 @@ firmware("config-broker-sonata")
             {
                 -- TCP/IP stack thread.
                 compartment = "TCPIP",
-                priority = 1,
+                priority = 3,
                 entry_point = "ip_thread_entry",
                 stack_size = 0x1000,
                 trusted_stack_frames = 5
@@ -178,7 +178,7 @@ firmware("config-broker-sonata")
                 -- Higher priority, this will be back-pressured by the message
                 -- queue if the network stack can't keep up, but we want
                 -- packets to arrive immediately.
-                priority = 2,
+                priority = 4,
                 entry_point = "ethernet_run_driver",
                 stack_size = 0x1000,
                 trusted_stack_frames = 5
