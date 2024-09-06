@@ -115,9 +115,22 @@ void __cheri_libcall SonataLcd::draw_image_rgb565(Rect           rect,
 void __cheri_libcall SonataLcd::draw_str(Point       point,
                                          const char *str,
                                          Color       background,
-                                         Color       foreground)
+                                         Color       foreground,
+										 Font        font)
 {
-	lcd_st7735_set_font(&ctx, &internal::m3x6_16ptFont);
+	switch (font) {
+		case Font::Large:
+			lcd_st7735_set_font(&ctx, &internal::lucidaConsole_12ptFont);
+			break;
+
+		case Font::Medium:
+			lcd_st7735_set_font(&ctx, &internal::lucidaConsole_10ptFont);
+			break;
+
+		default:
+			lcd_st7735_set_font(&ctx, &internal::m3x6_16ptFont);
+			break;
+	}
 	lcd_st7735_set_font_colors(&ctx,
 	                           static_cast<uint32_t>(background),
 	                           static_cast<uint32_t>(foreground));

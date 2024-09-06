@@ -15,6 +15,9 @@ namespace sonata::lcd
 		extern "C"
 		{
 #include "../third_party/display_drivers/core/m3x6_16pt.h"
+#include "../third_party/display_drivers/core/lucida_console_10pt.h"
+#include "../third_party/display_drivers/core/lucida_console_12pt.h"
+#include "../third_party/display_drivers/core/m3x6_16pt.h"
 #include "../third_party/display_drivers/st7735/lcd_st7735.h"
 		}
 		void __cheri_libcall lcd_init(LCD_Interface *, St7735Context *);
@@ -75,6 +78,13 @@ namespace sonata::lcd
 		Green = 0x00FF00
 	};
 
+	enum class Font : uint8_t
+	{
+		Small  = 0,
+		Medium = 1,
+		Large  = 2
+	};
+
 	class SonataLcd
 	{
 		private:
@@ -106,6 +116,7 @@ namespace sonata::lcd
 		void __cheri_libcall draw_str(Point       point,
 		                              const char *str,
 		                              Color       background,
-		                              Color       foreground);
+		                              Color       foreground,
+									  Font        font);
 	};
 } // namespace sonata::lcd

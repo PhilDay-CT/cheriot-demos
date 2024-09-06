@@ -44,7 +44,7 @@ void _print(const char *line, const char *error, Color fg, Color bg, bool header
 			auto logoRect1 = Rect::from_point_and_size({0, 0}, {48, 13});
 			lcd.draw_image_rgb565(logoRect1, CT_Banner);
 			
-			lcd.draw_line({0,14}, {lcd.resolution().width, 14}, Color::Black);
+			lcd.draw_line({0,16}, {lcd.resolution().width, 16}, Color::Black);
 		});
 
 		for (int i=0; i<LINES; i++) {
@@ -70,7 +70,7 @@ void _print(const char *line, const char *error, Color fg, Color bg, bool header
 				Header[i] = ' ';
 			}
 		}
-		lcd.draw_str({65, 2}, Header, bg, fg);
+		lcd.draw_str({65, 2}, Header, bg, fg, Font::Medium);
 		return;
 	}
 
@@ -99,12 +99,12 @@ void _print(const char *line, const char *error, Color fg, Color bg, bool header
 		next = 0;
 	}
 
-	uint32_t y = 15;
+	uint32_t y = 18;
 	int l = top;
 
 	CHERI::with_interrupts_disabled([&]() {	
 		for (int i=0; i<LINES; i++) {
-			lcd.draw_str({2, y}, lines[l].line, lines[l].bg, lines[l].fg);
+			lcd.draw_str({2, y}, lines[l].line, lines[l].bg, lines[l].fg, Font::Small);
 			l++;
 			if (l >= LINES) {
 				l = 0;
