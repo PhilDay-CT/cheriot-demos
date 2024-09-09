@@ -8,6 +8,11 @@ Build options:
  --IPv6=n --network-inject-faults=y --network-force-non-unique-mac=y --tls-rsa=y --scheduler-accounting=y
 ```
 
+tty
+```
+picocom /dev/ttyUSB2 -b 115200 --imap lfcrlf
+```
+
 This is an example of the configurtaion broker modified to work on a Sonata board
 
 - The rgb_led and user_led drivers use the Sonata MMIO
