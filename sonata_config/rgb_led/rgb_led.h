@@ -28,3 +28,8 @@ struct Config
  * In this demo it just prints the config value
  */
 void __cheri_libcall rgb_led_config(void *config);
+
+/**
+ * Initialise and set defaults
+ */
+void __cheri_libcall rgb_led_init();

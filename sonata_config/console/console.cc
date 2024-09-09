@@ -41,10 +41,14 @@ void _print(const char *line, const char *error, Color fg, Color bg, bool header
 		init = true;
 	
 		CHERI::with_interrupts_disabled([&]() {	
+			auto screen = lcd.resolution();
+		
 			auto logoRect1 = Rect::from_point_and_size({0, 0}, {48, 13});
 			lcd.draw_image_rgb565(logoRect1, CT_Banner);
-			
-			lcd.draw_line({0,16}, {lcd.resolution().width, 16}, Color::Black);
+			lcd.draw_line({0,16}, {screen.width, 16}, Color::Black);
+		
+			auto consoleRect = Rect::from_point_and_size({0, 17}, {screen.width, screen.height-17});
+			lcd.fill_rect(consoleRect, Color::Black);
 		});
 
 		for (int i=0; i<LINES; i++) {
@@ -55,9 +59,9 @@ void _print(const char *line, const char *error, Color fg, Color bg, bool header
 		
 		// A bit of hack but it initialises things
 		// nicely
-		strncpy(lines[0].line, "Ready", 5);
+		strncpy(lines[0].line, "Starting", 8);
 		lines[0].fg = Color::Green;
-		lines[0].bg = Color::White;
+		lines[0].bg = Color::Black;
 		next=1; 
 	}
 	
@@ -125,7 +129,7 @@ header(const char *header) {
 
 void __cheri_compartment("console")
 print(const char * line) {
-	_print(line, nullptr, Color::Black, Color::White,  false);
+	_print(line, nullptr, Color::Green, Color::Black,  false);
 }
 
 
@@ -134,6 +138,6 @@ error(const char *line, const char *error) {
 	_print(line, error, Color::White, Color::Red, false);
 }
 
-}
+} // namespace console
 
 

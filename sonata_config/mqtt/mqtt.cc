@@ -45,15 +45,15 @@ DECLARE_AND_DEFINE_CONNECTION_CAPABILITY(MosquittoOrgMQTT,
 
 DECLARE_AND_DEFINE_ALLOCATOR_CAPABILITY(mqttTestMalloc, 32 * 1024);
 
-std::string           topic;
-std::atomic<uint32_t> barrier;
+std::string           config_topic;
+std::string           status_topic;
 
 void __cheri_callback publishCallback(const char *topic,
                                       size_t      topicLength,
                                       const void *payload,
                                       size_t      payloadLength)
 {
-	const char *conf_id = topic + ::topic.size()-1;
+	const char *conf_id = topic + ::config_topic.size()-1;
 	Debug::log("topic: {} frag: {}", topic, conf_id);
 
 	// we need a null terminates string to parse
@@ -98,11 +98,11 @@ void __cheri_compartment("mqtt") init()
 		}
 	}
 
-	constexpr std::string_view TopicPrefix{"CT-Sonata/"};
-	topic.reserve(TopicPrefix.size() + 8 + 2);
-	topic.append(TopicPrefix.data(), TopicPrefix.size());
+	constexpr std::string_view ConfigTopicPrefix{"CT-Sonata/Config/"};
+	config_topic.reserve(ConfigTopicPrefix.size() + 8 + 2);
+	config_topic.append(ConfigTopicPrefix.data(), ConfigTopicPrefix.size());
 #if 0
-	topic.append("testing");
+	config_topic.append("testing");
 #else
 
 	char id[9];
@@ -114,11 +114,17 @@ void __cheri_compartment("mqtt") init()
 		}
 	}
 #endif
-	topic.append(id);
-	topic.append("/#");
+	config_topic.append(id);
+	config_topic.append("/#");
+
+	constexpr std::string_view StatusTopicPrefix{"CT-Sonata/Status/"};
+	status_topic.reserve(StatusTopicPrefix.size() + 8);
+	status_topic.append(StatusTopicPrefix.data(), StatusTopicPrefix.size());
+	status_topic.append(id);
 	
 	id[8] = 0;
-	console::header(id);
+	Debug::log("Connecting to MQTT broker... {} ");
+	
 	while (true)
 	{
 
@@ -128,8 +134,7 @@ void __cheri_compartment("mqtt") init()
 		mqtt_generate_client_id(clientID.data() + clientIDPrefix.size(),
 		                        clientID.size() - clientIDPrefix.size());
 
-		Debug::log("Connecting to MQTT broker... {} ");
-
+		
 		t           = UnlimitedTimeout;
 		SObj handle = mqtt_connect(&t,
 		                           STATIC_SEALED_VALUE(mqttTestMalloc),
@@ -151,18 +156,40 @@ void __cheri_compartment("mqtt") init()
 		}
 
 		Debug::log("Connected to MQTT broker!");
-
+		console::header(id);
+		console::print("Connected");
+		
 		Debug::log(
-		  "Subscribing to topic '{}' ({} bytes)", topic.c_str(), topic.size());
+		  "Subscribing to topic '{}' ({} bytes)", config_topic.c_str(), config_topic.size());
 		ret = mqtt_subscribe(&t,
 		                     handle,
 		                     1, // QoS 1 = delivered at least once
-		                     topic.data(),
-		                     topic.size());
+		                     config_topic.data(),
+		                     config_topic.size());
 
 		if (ret < 0)
 		{
 			Debug::log("Failed to subscribe, error {}.", ret);
+			mqtt_disconnect(&t, STATIC_SEALED_VALUE(mqttTestMalloc), handle);
+			continue;
+		}
+
+		Debug::log(
+		  "Publishing to topic '{}' ({} bytes)", status_topic.c_str(), status_topic.size());
+		
+		// Announce our ID
+		constexpr std::string_view StatusPayload{"Hello"};
+		ret = mqtt_publish(&t,
+		                   handle,
+		                   1, // QoS 1 = delivered at least once
+		                   status_topic.data(),
+		                   status_topic.size(),
+						   (void *)(StatusPayload.data()),
+						   StatusPayload.size());
+
+		if (ret < 0)
+		{
+			Debug::log("Failed to publish, error {}.", ret);
 			mqtt_disconnect(&t, STATIC_SEALED_VALUE(mqttTestMalloc), handle);
 			continue;
 		}
@@ -180,6 +207,7 @@ void __cheri_compartment("mqtt") init()
 				break;
 			}
 		}
+
 	}
 }
 

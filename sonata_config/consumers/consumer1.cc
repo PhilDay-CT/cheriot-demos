@@ -117,6 +117,9 @@ void __cheri_compartment("consumer1") init()
 	// a clean exit
 	uint16_t num_timeouts = 0;
 
+	// Initialise the RBG LED driver
+	rgb_led_init();
+
 	// Create the multi waiter
 	struct MultiWaiter *mw = nullptr;
 	Timeout             t1{MS_TO_TICKS(1000)};

@@ -28,7 +28,23 @@ void __cheri_libcall rgb_led_config(void *c)
 	           config->led1.green,
 	           config->led1.blue);
 
-	driver->rgb(SonataRgbLed::Led0, config->led0.red, config->led0.green, config->led0.blue);
-	driver->rgb(SonataRgbLed::Led1, config->led1.red, config->led1.green, config->led1.blue);
-	driver->update();
+	CHERI::with_interrupts_disabled([&]() {	
+		driver->rgb(SonataRgbLed::Led0, config->led0.red, config->led0.green, config->led0.blue);
+		driver->rgb(SonataRgbLed::Led1, config->led1.red, config->led1.green, config->led1.blue);
+		driver->update();
+	});
+}
+
+//
+// Initial settings
+//
+void __cheri_libcall rgb_led_init()
+{
+	auto driver = MMIO_CAPABILITY(SonataRgbLedController, rgbled);
+
+	CHERI::with_interrupts_disabled([&]() {	
+		driver->rgb(SonataRgbLed::Led0, 0, 0, 0);
+		driver->rgb(SonataRgbLed::Led1, 0, 0, 0);
+		driver->update();
+	});
 }
