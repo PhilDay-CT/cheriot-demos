@@ -3,6 +3,11 @@ Safe Configuration Management (Sonata)
 
 Contributed by Configured Things Ltd
 
+Build options:
+```
+ --IPv6=n --network-inject-faults=y --network-force-non-unique-mac=y --tls-rsa=y --scheduler-accounting=y
+```
+
 This is an example of the configurtaion broker modified to work on a Sonata board
 
 - The rgb_led and user_led drivers use the Sonata MMIO
