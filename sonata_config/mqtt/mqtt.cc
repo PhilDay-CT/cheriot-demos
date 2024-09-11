@@ -56,7 +56,7 @@ void __cheri_callback publishCallback(const char *topic,
 	const char *conf_id = topic + ::config_topic.size()-1;
 	Debug::log("topic: {} frag: {}", topic, conf_id);
 
-	// we need a null terminates string to parse
+	// we need a null terminated string to parse
 	auto json = (char*)malloc(payloadLength+1);
 	std::memcpy((void *)json, payload, payloadLength);
 	json[payloadLength] = 0;
@@ -65,7 +65,7 @@ void __cheri_callback publishCallback(const char *topic,
 	console::print("---");
 	console::print(conf_id);
 	console::print(json);
-	updateConfig(conf_id, json);
+	updateConfig(conf_id, topicLength-(::config_topic.size()+1), json);
 
 	free(json);
 }
@@ -123,11 +123,11 @@ void __cheri_compartment("mqtt") init()
 	status_topic.append(id);
 	
 	id[8] = 0;
-	Debug::log("Connecting to MQTT broker... {} ");
 	
 	while (true)
 	{
-
+		Debug::log("Connecting to MQTT broker... {} ");
+	
 		// Prefix with something recognizable, for convenience.
 		memcpy(clientID.data(), clientIDPrefix.data(), clientIDPrefix.size());
 		// Suffix with random character chain.
@@ -201,9 +201,11 @@ void __cheri_compartment("mqtt") init()
 
 			if (ret < 0)
 			{
-				Debug::log("Failed to wait for the SUBACK, error {}.", ret);
+				Debug::log("Mqtt run failed, error {}.", ret);
+				console::print("Failed");
 				mqtt_disconnect(
 				  &t, STATIC_SEALED_VALUE(mqttTestMalloc), handle);
+				Debug::log("Disconnected", ret);
 				break;
 			}
 		}

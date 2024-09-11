@@ -66,7 +66,7 @@ namespace
  * subscribing to the topic.
  */
 int __cheri_compartment("provider")
-  updateConfig(const char *topic, const char *message)
+  updateConfig(const char *topic, size_t topicLength, const char *message)
 {
 	Debug::log("thread {} got {} on {}", thread_id_get(), message, topic);
 
@@ -80,7 +80,7 @@ int __cheri_compartment("provider")
 	// message is for.
 	for (auto t : topicMap)
 	{
-		if (strcmp(t.topic, topic) == 0)
+		if (strncmp(t.topic, topic, topicLength) == 0)
 		{
 			found = true;
 			res   = set_config(t.cap, message);

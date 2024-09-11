@@ -10,4 +10,4 @@
  * subscribing to the topic.
  */
 int __cheri_compartment("provider")
-  updateConfig(const char *topic, const char *message);
+  updateConfig(const char *topic, size_t topicLength, const char *message);
