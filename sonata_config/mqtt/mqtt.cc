@@ -45,8 +45,84 @@ DECLARE_AND_DEFINE_CONNECTION_CAPABILITY(MosquittoOrgMQTT,
 
 DECLARE_AND_DEFINE_ALLOCATOR_CAPABILITY(mqttTestMalloc, 32 * 1024);
 
-std::string           config_topic;
-std::string           status_topic;
+std::string config_topic;
+std::string status_topic;
+std::string status;
+
+auto switches()
+{
+	return MMIO_CAPABILITY(SonataGPIO, gpio);
+}
+
+// ID comes from the first two switches
+auto read_id() {
+	uint8_t res = 0;
+	for (auto i=0; i<2; i++) {
+		auto set = switches()->read_switch(i);
+		if (set) {
+			res += 1<<i;
+		}
+	}
+	return res;
+}
+
+auto read_switches() {
+	uint8_t res = 0;
+	for (auto i=0; i<8; i++) {
+		auto set = switches()->read_switch(i);
+		if (set) {
+			res += 1<<i;
+		}
+	}
+	return res;
+}
+
+// Create a JSON view of the sonata status
+auto create_status() {
+	constexpr std::string_view StatusPrefix{"{\"Status\":\"On\",\"switches\":["};
+	status.clear();
+	status.reserve(StatusPrefix.size() + 15 + 3);
+	status.append(StatusPrefix.data(), StatusPrefix.size());
+	for (auto i=0; i<8; i++) {
+		status.append(switches()->read_switch(i)?"1":"0");
+		if (i < 7)
+			status.append(",");
+	}
+	status.append("]}");
+	Debug::log("Status: {}", status.c_str());
+}
+
+// Create a JSON view of the sonata status
+auto clear_status() {
+	constexpr std::string_view StatusPrefix{"{\"Status\":\"Off\"}"};
+	status.clear();
+	status.reserve(StatusPrefix.size() + 15 + 3);
+	status.append(StatusPrefix.data(), StatusPrefix.size());
+	Debug::log("Status: {}", status.c_str());
+}
+
+
+//
+// Build the config an status topics
+//
+auto create_topics() {
+	
+	char ids[11];
+	snprintf(ids, sizeof(ids), "Sonata_%d", read_id());
+
+	constexpr std::string_view ConfigTopicPrefix{"CT-Sonata/Config/"};
+	config_topic.clear();
+	config_topic.reserve(ConfigTopicPrefix.size() + 8 + 2);
+	config_topic.append(ConfigTopicPrefix.data(), ConfigTopicPrefix.size());
+	config_topic.append(ids);
+	config_topic.append("/#");
+
+	constexpr std::string_view StatusTopicPrefix{"CT-Sonata/Status/"};
+	status_topic.clear();
+	status_topic.reserve(StatusTopicPrefix.size() + 8);
+	status_topic.append(StatusTopicPrefix.data(), StatusTopicPrefix.size());
+	status_topic.append(ids);
+}
 
 void __cheri_callback publishCallback(const char *topic,
                                       size_t      topicLength,
@@ -98,42 +174,22 @@ void __cheri_compartment("mqtt") init()
 		}
 	}
 
-	constexpr std::string_view ConfigTopicPrefix{"CT-Sonata/Config/"};
-	config_topic.reserve(ConfigTopicPrefix.size() + 8 + 2);
-	config_topic.append(ConfigTopicPrefix.data(), ConfigTopicPrefix.size());
-#if 0
-	config_topic.append("testing");
-#else
+	//constexpr std::string_view ConfigTopicPrefix{"CT-Sonata/Config/"};
+	//config_topic.reserve(ConfigTopicPrefix.size() + 8 + 2);
+	//config_topic.append(ConfigTopicPrefix.data(), ConfigTopicPrefix.size());
 
-	char id[9];
-	{
-		EntropySource entropySource;
-		for (int i = 0; i < 8; i++)
-		{
-			id[i] = ('a' + entropySource() % 26);
-		}
-	}
-#endif
-	config_topic.append(id);
-	config_topic.append("/#");
-
-	constexpr std::string_view StatusTopicPrefix{"CT-Sonata/Status/"};
-	status_topic.reserve(StatusTopicPrefix.size() + 8);
-	status_topic.append(StatusTopicPrefix.data(), StatusTopicPrefix.size());
-	status_topic.append(id);
 	
-	id[8] = 0;
+	// Prefix with something recognizable, for convenience.
+	memcpy(clientID.data(), clientIDPrefix.data(), clientIDPrefix.size());
+	// Suffix with random character chain.
+	mqtt_generate_client_id(clientID.data() + clientIDPrefix.size(),
+	                        clientID.size() - clientIDPrefix.size());
+
+		
 	
 	while (true)
 	{
-		Debug::log("Connecting to MQTT broker... {} ");
-	
-		// Prefix with something recognizable, for convenience.
-		memcpy(clientID.data(), clientIDPrefix.data(), clientIDPrefix.size());
-		// Suffix with random character chain.
-		mqtt_generate_client_id(clientID.data() + clientIDPrefix.size(),
-		                        clientID.size() - clientIDPrefix.size());
-
+		Debug::log("Connecting to MQTT broker... {}");
 		
 		t           = UnlimitedTimeout;
 		SObj handle = mqtt_connect(&t,
@@ -154,62 +210,94 @@ void __cheri_compartment("mqtt") init()
 			Debug::log("Failed to connect.");
 			continue;
 		}
+	
 
 		Debug::log("Connected to MQTT broker!");
-		console::header(id);
+		//console::header(ids);
 		console::print("Connected");
 		
-		Debug::log(
-		  "Subscribing to topic '{}' ({} bytes)", config_topic.c_str(), config_topic.size());
-		ret = mqtt_subscribe(&t,
-		                     handle,
-		                     1, // QoS 1 = delivered at least once
-		                     config_topic.data(),
-		                     config_topic.size());
+		// loop to subcribe to our config topic
+		while (true) {
+			auto id = read_id();
+			create_topics();
 
-		if (ret < 0)
-		{
-			Debug::log("Failed to subscribe, error {}.", ret);
-			mqtt_disconnect(&t, STATIC_SEALED_VALUE(mqttTestMalloc), handle);
-			continue;
-		}
-
-		Debug::log(
-		  "Publishing to topic '{}' ({} bytes)", status_topic.c_str(), status_topic.size());
-		
-		// Announce our ID
-		constexpr std::string_view StatusPayload{"Hello"};
-		ret = mqtt_publish(&t,
-		                   handle,
-		                   1, // QoS 1 = delivered at least once
-		                   status_topic.data(),
-		                   status_topic.size(),
-						   (void *)(StatusPayload.data()),
-						   StatusPayload.size());
-
-		if (ret < 0)
-		{
-			Debug::log("Failed to publish, error {}.", ret);
-			mqtt_disconnect(&t, STATIC_SEALED_VALUE(mqttTestMalloc), handle);
-			continue;
-		}
-
-		while (true)
-		{
-			size_t  heapFree = heap_available();
-			ret = mqtt_run(&t, handle);
+			Debug::log(
+			"Subscribing to topic '{}' ({} bytes)", config_topic.c_str(), config_topic.size());
+			ret = mqtt_subscribe(&t,
+								handle,
+								1, // QoS 1 = delivered at least once
+								config_topic.data(),
+								config_topic.size());
 
 			if (ret < 0)
 			{
-				Debug::log("Mqtt run failed, error {}.", ret);
-				console::print("Failed");
-				mqtt_disconnect(
-				  &t, STATIC_SEALED_VALUE(mqttTestMalloc), handle);
-				Debug::log("Disconnected", ret);
+				Debug::log("Failed to subscribe, error {}.", ret);
+				mqtt_disconnect(&t, STATIC_SEALED_VALUE(mqttTestMalloc), handle);
 				break;
 			}
-		}
 
+			// Inner loop to process MQTT messages and report
+			// switch changes
+			int switches = -1;
+			while (true)
+			{
+				//size_t  heapFree = heap_available();
+				t = Timeout{MS_TO_TICKS(10000)};
+				ret = mqtt_run(&t, handle);
+
+				if (ret < 0)
+				{
+					Debug::log("Mqtt run failed, error {}.", ret);
+					console::print("Failed");
+					continue;  // trying to reconnect doesn't seem to work
+				} 
+				else 
+				{	
+					// If the ID has changed disconnect and reconnect so we
+					// subsrcibe to the new set of topics 
+					if (read_id() != id) {
+						Debug::log("ID changed");
+						ret = mqtt_unsubscribe(&t,
+								handle,
+								1, // QoS 1 = delivered at least once
+								"#",
+								1);
+
+						// Publish an empty status
+						clear_status();
+						ret = mqtt_publish(&t,
+									handle,
+									1, // QoS 1 = delivered at least once
+									status_topic.data(),
+									status_topic.size(),
+									(void *)(status.data()),
+									status.size());
+						break;
+					}
+
+					// If the switch setting have changed update the status
+					auto newSwitches = read_switches();
+					if (newSwitches != switches) {
+						switches = newSwitches;
+						
+						// Send the status
+						create_status();
+						
+						Debug::log(
+							"Publishing to topic '{}' ({} bytes)", status_topic.c_str(), status.c_str());
+							ret = mqtt_publish(&t,
+									handle,
+									1, // QoS 1 = delivered at least once
+									status_topic.data(),
+									status_topic.size(),
+									(void *)(status.data()),
+									status.size());
+					}
+				}
+			}
+		}
+		Debug::log("Continuing loop to reconnect");
+		
 	}
 }
 
