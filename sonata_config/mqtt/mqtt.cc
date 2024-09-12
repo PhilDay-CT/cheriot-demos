@@ -26,7 +26,7 @@ constexpr bool UseIPv6 = CHERIOT_RTOS_OPTION_IPv6;
 /// specification)
 constexpr size_t MQTTMaximumClientLength = 23;
 /// Prefix for MQTT client identifier
-constexpr std::string_view clientIDPrefix{"cheriotMQTT"};
+constexpr std::string_view clientIDPrefix{"CT-Sonata"};
 /// Space for the random client ID.
 std::array<char, MQTTMaximumClientLength> clientID;
 static_assert(clientIDPrefix.size() < clientID.size());
@@ -174,11 +174,6 @@ void __cheri_compartment("mqtt") init()
 		}
 	}
 
-	//constexpr std::string_view ConfigTopicPrefix{"CT-Sonata/Config/"};
-	//config_topic.reserve(ConfigTopicPrefix.size() + 8 + 2);
-	//config_topic.append(ConfigTopicPrefix.data(), ConfigTopicPrefix.size());
-
-	
 	// Prefix with something recognizable, for convenience.
 	memcpy(clientID.data(), clientIDPrefix.data(), clientIDPrefix.size());
 	// Suffix with random character chain.
@@ -186,10 +181,10 @@ void __cheri_compartment("mqtt") init()
 	                        clientID.size() - clientIDPrefix.size());
 
 		
-	
+	// Outer loop
 	while (true)
 	{
-		Debug::log("Connecting to MQTT broker... {}");
+		Debug::log("Connecting to MQTT broker...");
 		
 		t           = UnlimitedTimeout;
 		SObj handle = mqtt_connect(&t,
@@ -216,8 +211,10 @@ void __cheri_compartment("mqtt") init()
 		//console::header(ids);
 		console::print("Connected");
 		
-		// loop to subcribe to our config topic
-		while (true) {
+		// Inner loop - runs all the time we are connected
+		// Subscribe to our ID and then consume messages
+		bool connected = true;
+		while (connected) {
 			auto id = read_id();
 			create_topics();
 
@@ -249,7 +246,8 @@ void __cheri_compartment("mqtt") init()
 				{
 					Debug::log("Mqtt run failed, error {}.", ret);
 					console::print("Failed");
-					continue;  // trying to reconnect doesn't seem to work
+					connected = false;
+					break;  // trying to reconnect doesn't seem to work
 				} 
 				else 
 				{	
@@ -296,6 +294,8 @@ void __cheri_compartment("mqtt") init()
 				}
 			}
 		}
+		Debug::log("Disconnecting");
+		mqtt_disconnect(&t, STATIC_SEALED_VALUE(mqttTestMalloc), handle);
 		Debug::log("Continuing loop to reconnect");
 		
 	}

@@ -74,7 +74,9 @@ void _print(const char *line, const char *error, Color fg, Color bg, bool header
 				Header[i] = ' ';
 			}
 		}
-		lcd.draw_str({65, 2}, Header, bg, fg, Font::Medium);
+		CHERI::with_interrupts_disabled([&]() {	
+			lcd.draw_str({65, 2}, Header, bg, fg, Font::Medium);
+		});
 		return;
 	}
 
@@ -129,13 +131,13 @@ header(const char *header) {
 
 void __cheri_compartment("console")
 print(const char * line) {
-	_print(line, nullptr, Color::Green, Color::Black,  false);
+//	_print(line, nullptr, Color::Green, Color::Black,  false);
 }
 
 
 void __cheri_compartment("console")
 error(const char *line, const char *error) {
-	_print(line, error, Color::White, Color::Red, false);
+//	_print(line, error, Color::White, Color::Red, false);
 }
 
 } // namespace console
