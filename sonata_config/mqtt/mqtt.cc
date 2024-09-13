@@ -12,7 +12,14 @@
 #include <sntp.h>
 #include <tick_macros.h>
 
-#include "mosquitto.org.h"
+//#include "mosquitto.org.h"
+//#include "mqtt.sonata.demo.h"
+//#include "mqtt.sonata.demo.bundle.h"
+//#include "inter-ca.h"
+//#include "inter-ca.bundle.h"
+//#include "root-ca.h"
+//#include "root-ca.bundle.h"
+#include "cheriot.demo.h"
 
 #include "../console/console.h"
 #include "../provider/provider.h"
@@ -39,7 +46,8 @@ constexpr const size_t outgoingPublishCount = 20;
 // MQTT test broker: https://test.mosquitto.org/
 // Note: port 8883 is encrypted and unautenticated
 DECLARE_AND_DEFINE_CONNECTION_CAPABILITY(MosquittoOrgMQTT,
-                                         "test.mosquitto.org",
+//                                         "test.mosquitto.org",
+                                         "cheriot.demo",
                                          8883,
                                          ConnectionTypeTCP);
 
@@ -48,6 +56,29 @@ DECLARE_AND_DEFINE_ALLOCATOR_CAPABILITY(mqttTestMalloc, 32 * 1024);
 std::string config_topic;
 std::string status_topic;
 std::string status;
+
+uint32_t get_current_time()
+{
+	// The return value is only a 32-bit integer, so we will
+	// overflow after 4,294,967,295 ms (which should be about 7
+	// weeks). The overflow is not a problem though, as wraparound
+	// is defined and coreMQTT only uses this for additions and
+	// substractions, not ordered comparisons. See:
+	// https://github.com/FreeRTOS/coreMQTT/issues/277
+	uint64_t currentCycle = rdcycle64();
+
+	// Convert to milliseconds
+	constexpr uint64_t MilliSecondsPerSecond = 1000;
+	constexpr uint64_t CyclesPerMilliSecond =
+		CPU_TIMER_HZ / MilliSecondsPerSecond;
+	static_assert(CyclesPerMilliSecond > 0,
+					"The CPU frequency is too low for the coreMQTT time "
+					"function, which provides time in milliseconds.");
+	uint64_t currentTime = currentCycle / CyclesPerMilliSecond;
+
+	// Truncate into 32 bit
+	return currentTime & 0xFFFFFFFF;
+}
 
 auto switches()
 {
@@ -239,9 +270,9 @@ void __cheri_compartment("mqtt") init()
 			while (true)
 			{
 				//size_t  heapFree = heap_available();
-				t = Timeout{MS_TO_TICKS(10000)};
+				//t = Timeout{MS_TO_TICKS(100000)};
 				ret = mqtt_run(&t, handle);
-
+				
 				if (ret < 0)
 				{
 					Debug::log("Mqtt run failed, error {}.", ret);
