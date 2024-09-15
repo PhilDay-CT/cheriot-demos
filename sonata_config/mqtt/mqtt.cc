@@ -289,8 +289,8 @@ void __cheri_compartment("mqtt") init()
 						ret = mqtt_unsubscribe(&t,
 								handle,
 								1, // QoS 1 = delivered at least once
-								"#",
-								1);
+								config_topic.data(),
+								config_topic.size());
 
 						// Publish an empty status
 						clear_status();
