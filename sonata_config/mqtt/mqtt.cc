@@ -160,20 +160,29 @@ void __cheri_callback publishCallback(const char *topic,
                                       const void *payload,
                                       size_t      payloadLength)
 {
-	const char *conf_id = topic + ::config_topic.size()-1;
-	Debug::log("topic: {} frag: {}", topic, conf_id);
+	// Create a null terminated srting from the trailing
+	// part of the topic
+	auto conf_id_length = topicLength-(::config_topic.size()-1);
+	auto conf_id = (char *)malloc(conf_id_length+1);
+	std::memcpy((void *)conf_id, (void *)(topic + ::config_topic.size()-1), conf_id_length);
+	conf_id[conf_id_length] = 0;
+	//const char *conf_id = topic + ::config_topic.size()-1;
+	Debug::log("topic: {}", topic);
+	Debug::log("topic_Len {}, conf_len: {}, conf_id_length: {} ", (uint32_t)topicLength, (uint32_t)(config_topic.size()), (uint32_t)conf_id_length);
+	Debug::log("conf_id: {}", (const char *)conf_id);
 
 	// we need a null terminated string to parse
 	auto json = (char*)malloc(payloadLength+1);
 	std::memcpy((void *)json, payload, payloadLength);
 	json[payloadLength] = 0;
 	
-	Debug::log("Got topic: {} json {}", topic, (const char*)json);
+	Debug::log("json {}", (const char*)json);
 	console::print("---");
 	console::print(conf_id);
 	console::print(json);
-	updateConfig(conf_id, topicLength-(::config_topic.size()+1), json);
+	updateConfig(conf_id, conf_id_length, json);
 
+	free(conf_id);
 	free(json);
 }
 

@@ -10,7 +10,7 @@ namespace console {
 
 struct Config
 {
-	char header[30];
+	char header[12];
 };
 
 /**

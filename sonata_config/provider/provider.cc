@@ -10,6 +10,8 @@
 // Expose debugging features unconditionally for this compartment.
 using Debug = ConditionalDebug<true, "Provider">;
 
+#include "../console/console.h"
+
 /**
  * Define the sealed capabilites for each of the configuration
  * items this compartment is allowed to update
@@ -86,9 +88,11 @@ int __cheri_compartment("provider")
 			res   = set_config(t.cap, message);
 			if (res < 0)
 			{
-				Debug::log("thread {} Failed to set value for {}",
+				Debug::log("thread {} Failed to set value for {} {}",
 				           thread_id_get(),
-				           t.cap);
+				           t.topic,
+						   t.cap);
+				console::error("Failed to set", t.topic);
 			}
 			break;
 		}
