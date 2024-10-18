@@ -12,7 +12,6 @@
 #include <string.h>
 #include <thread.h>
 
-#include "../parser/parser.h"
 #include "config_broker.h"
 
 // Import some useful things from the CHERI namespace.

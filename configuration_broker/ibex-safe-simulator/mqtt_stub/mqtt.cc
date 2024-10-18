@@ -48,7 +48,7 @@
 #include <fail-simulator-on-error.h>
 #include <thread.h>
 
-#include "../provider/provider.h"
+#include "../../common/provider/provider.h"
 
 // Expose debugging features unconditionally for this compartment.
 using Debug = ConditionalDebug<true, "MQTT">;

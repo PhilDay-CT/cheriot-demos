@@ -3,7 +3,7 @@
 
 
 set_project("CHERIoT Compartmentalised Config")
-sdkdir = "../cheriot-rtos/sdk"
+sdkdir = "../../cheriot-rtos/sdk"
 includes(sdkdir)
 set_toolchains("cheriot-clang")
 
@@ -14,60 +14,44 @@ includes(path.join(sdkdir, "lib/freestanding"),
 option("board")
     set_default("ibex-safe-simulator")
 
--- library for JSON parser   
-library("json_parser")
-    set_default(false)
-    add_files("json_parser/json_parser.cc")
-    add_files("third_party/coreJSON/core_json.cc")
+
+includes("../common/json_parser")
+includes("../common/config_broker") 
+
 
 -- Library for Mocked logger service
 library("logger")
     set_default(false)
-    add_files("logger/logger.cc")
+    add_files("lib/logger/logger.cc")
 
 -- Library for Mocked RGB LED config service
 library("rgb_led")
     set_default(false)
-    add_files("rgb_led/rgb_led.cc")       
+    add_files("lib/rgb_led/rgb_led.cc")       
 
 -- Library for Mocked User LED config service
 library("user_led")
     set_default(false)
-    add_files("user_led/user_led.cc")       
+    add_files("lib/user_led/user_led.cc")       
 
 -- Mocked MQTT Client
 compartment("mqtt")
     add_files("mqtt_stub/mqtt.cc")
 
--- Configuration Broker
-debugOption("config_broker")
-compartment("config_broker")
-    add_rules("cheriot.component-debug")
-    add_files("config_broker/config_broker.cc")
-
 -- Configuration Provider
-compartment("provider")
-    add_files("provider/provider.cc")
+includes("../common/provider")
 
 -- Parser init compartment
 compartment("parser_init")
-    add_files("parser/parser_init.cc")
+    add_files("parser_init/parser_init.cc")
 
 -- Configuration JSON parser sandboxes
-compartment("parser_logger")
-    add_files("parser/parse_logger.cc")
-
-compartment("parser_rgb_led")
-    add_files("parser/parse_rgb_led.cc")
-
-compartment("parser_user_led")
-    add_files("parser/parse_user_led.cc")
+includes("../common/parsers/rgb_led")
+includes("../common/parsers/user_led")
+includes("../common/parsers/logger")
 
 -- Consumers
-compartment("consumer1")
-    add_files("consumers/consumer1.cc")
-compartment("consumer2")
-    add_files("consumers/consumer2.cc")
+includes("../common/consumers")
 
 -- Firmware image for the example.
 firmware("config-broker-ibex-sim")

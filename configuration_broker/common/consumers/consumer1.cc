@@ -23,8 +23,8 @@ DEFINE_READ_CONFIG_CAPABILITY(LOGGER_CONFIG)
 // Expose debugging features unconditionally for this compartment.
 using Debug = ConditionalDebug<true, "Consumer #1">;
 
-#include "../logger/logger.h"
-#include "../rgb_led/rgb_led.h"
+#include "../include/logger.h"
+#include "../include/rgb_led.h"
 
 namespace
 {
