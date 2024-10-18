@@ -18,7 +18,7 @@ option("board")
 library("json_parser")
     set_default(false)
     add_files("json_parser/json_parser.cc")
-    add_files("json_parser/core_json.cc")
+    add_files("third_party/coreJSON/core_json.cc")
 
 -- Library for Mocked logger service
 library("logger")
