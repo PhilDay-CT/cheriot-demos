@@ -66,9 +66,14 @@ namespace
  * subscribing to the topic.
  */
 int __cheri_compartment("provider")
-  updateConfig(const char *topic, const char *message)
+  updateConfig(const char *topic,
+               size_t      topicLength,
+               const void *payload,
+               size_t      payloadLength)
 {
-	Debug::log("thread {} got {} on {}", thread_id_get(), message, topic);
+	std::string_view svT(topic, topicLength);
+	std::string_view svP((char *)payload, payloadLength);
+	Debug::log("thread {} got {} on {}", thread_id_get(), svP, svT);
 
 	// Initalise the topic map
 	set_up_topic_map();
@@ -80,10 +85,10 @@ int __cheri_compartment("provider")
 	// message is for.
 	for (auto t : topicMap)
 	{
-		if (strcmp(t.topic, topic) == 0)
+		if (strncmp(t.topic, topic, topicLength) == 0)
 		{
 			found = true;
-			res   = set_config(t.cap, message);
+			res   = set_config(t.cap, (const char *)payload, payloadLength);
 			if (res < 0)
 			{
 				Debug::log("thread {} Failed to set value for {}",

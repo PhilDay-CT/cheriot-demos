@@ -33,7 +33,7 @@ namespace
 		uint32_t                  minTicks; // Min system ticks between updates
 		uint64_t                  nextUpdate; // Time of next valid update
 		FlagLockPriorityInherited lock; // lock to prevent concurrent changes
-		int __cheri_callback (*parser)(const char *json, void *dst);
+		int __cheri_callback (*parser)(const char *json, size_t jsonLength, void *dst);
 		InternalConfigitem *next;
 	};
 
@@ -121,12 +121,11 @@ namespace
  * the capability.
  */
 int __cheri_compartment("config_broker")
-  set_config(SObj sealedCap, const char *json)
+  set_config(SObj sealedCap, const char *json, size_t jsonLength)
 {
-	Debug::log("thread {} Set config called with {} {}",
+	Debug::log("thread {} Set config called for {}",
 	           thread_id_get(),
-	           sealedCap,
-	           json);
+	           sealedCap);
 
 	// Check that we've been given a valid capability
 	ConfigToken *token = config_capability_unseal(sealedCap, CONFIG_WRITE);
@@ -190,7 +189,7 @@ int __cheri_compartment("config_broker")
 	roJSON.permissions() &= {CHERI::Permission::Load};
 
 	// Call the parser
-	if (c->parser(roJSON, woNewData) != 0)
+	if (c->parser(roJSON, jsonLength, woNewData) != 0)
 	{
 		Debug::log("Parser failed for {}", token->Name);
 		free(newData);
@@ -293,7 +292,7 @@ ConfigItem __cheri_compartment("config_broker") get_config(SObj sealedCap)
  */
 int __cheri_compartment("config_broker")
   set_parser(SObj                 sealedCap,
-             __cheri_callback int parser(const char *json, void *dst))
+             __cheri_callback int parser(const char *json, size_t jsonLength, void *dst))
 {
 	Debug::log(
 	  "thread {} set parser called with {}", thread_id_get(), sealedCap);
