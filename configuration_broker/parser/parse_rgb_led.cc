@@ -55,7 +55,7 @@ DEFINE_PARSER_CONFIG_CAPABILITY(RGB_LED_CONFIG, sizeof(rgbLed::Config), 1800);
 /**
  * Parse a json string into an RGB LED Config struct.
  */
-int __cheri_callback parse_RGB_LED_config(const char *json, void *dst)
+int __cheri_callback parse_RGB_LED_config(const char *json, size_t jsonLength, void *dst)
 {
 	auto        *config = static_cast<rgbLed::Config *>(dst);
 	JSONStatus_t result;
@@ -63,7 +63,7 @@ int __cheri_callback parse_RGB_LED_config(const char *json, void *dst)
 	auto initial_quota = heap_quota_remaining(MALLOC_CAPABILITY);
 
 	// Check we have valid JSON
-	result = jsonParser::validate(json, strlen(json));
+	result = jsonParser::validate(json, jsonLength);
 	if (result != JSONSuccess)
 	{
 		Debug::log("thread {} Invalid JSON {}", thread_id_get(), json);

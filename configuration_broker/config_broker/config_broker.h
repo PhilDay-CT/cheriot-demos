@@ -103,7 +103,7 @@ struct ConfigItem
  * Returns 0 for success.
  */
 int __cheri_compartment("config_broker")
-  set_config(SObj configWriteCapability, const char *json);
+  set_config(SObj configWriteCapability, const char *json, size_t jsonLength);
 
 /**
  * Read the value of a configuration item.
@@ -136,4 +136,4 @@ ConfigItem __cheri_compartment("config_broker")
  */
 int __cheri_compartment("config_broker")
   set_parser(SObj                 configValidateCapability,
-             __cheri_callback int parse(const char *json, void *dst));
+             __cheri_callback int parse(const char *json, size_t jsonLength, void *dst));

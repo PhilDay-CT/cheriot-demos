@@ -163,7 +163,7 @@ void __cheri_compartment("mqtt") mqtt_init()
 	{
 		Debug::log("-------- {} --------", m.description);
 		Debug::log("thread {} Send {} {}", thread_id_get(), m.topic, m.json);
-		auto res = updateConfig(m.topic, m.json);
+		auto res = updateConfig(m.topic, strlen(m.topic), m.json, strlen(m.json));
 		Debug::Assert(res == m.expected, "Unexpected result {}", res);
 
 		// Give the consumers a chance to run
@@ -174,11 +174,11 @@ void __cheri_compartment("mqtt") mqtt_init()
 	// try to update the RGB LED too quickly
 	auto m = Messages[0];
 	Debug::log("------- Update RGB LED --------");
-	auto res = updateConfig(m.topic, m.json);
+	auto res = updateConfig(m.topic, strlen(m.topic), m.json, strlen(m.json));
 	Debug::Assert(res == 0, "Unexpected result {}", res);
 
 	Debug::log("------- Update RGB LED too quickly --------");
-	res = updateConfig(m.topic, m.json);
+	res = updateConfig(m.topic, strlen(m.topic), m.json, strlen(m.json));
 	Debug::Assert(res == -EBUSY, "Unexpected result {}", res);
 
 	Debug::log("\n---- Finished ----");
