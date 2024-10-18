@@ -3,7 +3,7 @@
 
 #include <debug.hh>
 
-#include "logger.h"
+#include "../../../common/include/logger.h"
 
 // Expose debugging features unconditionally for this library.
 using Debug = ConditionalDebug<true, "Logger">;

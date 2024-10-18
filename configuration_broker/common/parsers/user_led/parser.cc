@@ -42,13 +42,12 @@
 // Expose debugging features unconditionally for this compartment.
 using Debug = ConditionalDebug<true, "Parser">;
 
-#include "parser.h"
-#include "parser_helper.h"
+#include "../parser_helper.h"
 
 // Set for Items we are allowed to register a parser for
-#include "../config_broker/config_broker.h"
+#include "../../config_broker/config_broker.h"
 
-#include "../user_led/user_led.h"
+#include "../../include/user_led.h"
 #define USER_LED_CONFIG "user_led"
 DEFINE_PARSER_CONFIG_CAPABILITY(USER_LED_CONFIG, sizeof(userLed::Config), 1800);
 

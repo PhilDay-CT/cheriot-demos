@@ -3,7 +3,7 @@
 
 #include <debug.hh>
 
-#include "user_led.h"
+#include "../../../common/include/user_led.h"
 
 // Expose debugging features unconditionally for this library.
 using Debug = ConditionalDebug<true, "USER LED">;

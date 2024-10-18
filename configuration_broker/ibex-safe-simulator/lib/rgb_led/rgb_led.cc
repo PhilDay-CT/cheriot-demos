@@ -3,7 +3,7 @@
 
 #include <debug.hh>
 
-#include "rgb_led.h"
+#include "../../../common/include/rgb_led.h"
 
 // Expose debugging features unconditionally for this library.
 using Debug = ConditionalDebug<true, "RGB LED">;
