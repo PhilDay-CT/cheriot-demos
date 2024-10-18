@@ -136,27 +136,7 @@ int __cheri_compartment("config_broker")
 		return -EPERM;
 	}
 
-	//
-	// We need to load all the parsers before we can
-	// accept any updates. Rather than have a thread in
-	// the parser compartment that runs to do that and
-	// then has to hang around (as threads can't exit) we
-	// use the first thread that tries to load a value to
-	// make a cross-compartment call to parserInit()
-	//
-	static bool ParsersLoaded = false;
-
-	if (!ParsersLoaded)
-	{
-		auto res = parser_init();
-		if (res < 0)
-		{
-			Debug::log("One or more parsers failed to init");
-			return res;
-		}
-		ParsersLoaded = true;
-	}
-
+	
 	// Find or create a config structure
 	InternalConfigitem *c = find_or_create_config(token);
 	if (c == nullptr)
