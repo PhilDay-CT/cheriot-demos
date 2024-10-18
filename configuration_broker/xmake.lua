@@ -49,6 +49,10 @@ compartment("config_broker")
 compartment("provider")
     add_files("provider/provider.cc")
 
+-- Parser init compartment
+compartment("parser_init")
+    add_files("parser/parser_init.cc")
+
 -- Configuration JSON parser sandboxes
 compartment("parser_logger")
     add_files("parser/parse_logger.cc")
@@ -77,6 +81,7 @@ firmware("config-broker-ibex-sim")
     add_deps("mqtt")
     add_deps("provider")
     add_deps("config_broker")
+    add_deps("parser_init")
     add_deps("parser_logger")
     add_deps("parser_rgb_led")
     add_deps("parser_user_led")
@@ -86,12 +91,12 @@ firmware("config-broker-ibex-sim")
         target:values_set("board", "$(board)")
         target:values_set("threads", {
             {
-                -- Thread to set config values.
-                -- Starts and loops in the mqtt
-                -- compartment.
-                compartment = "mqtt",
+                -- Thread to receive config values.
+                -- Starts in the parser_init compartment
+                -- and then loops in the mqtt compartment.
+                compartment = "parser_init",
                 priority = 1,
-                entry_point = "init",
+                entry_point = "parser_init",
                 stack_size = 0x700,
                 trusted_stack_frames = 8
             },
