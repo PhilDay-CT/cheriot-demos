@@ -4,7 +4,7 @@
 // A simple wrapper for core-json from FreeRTOS to make
 // it into a CHERIoT library
 
-#include "core_json.h"
+#include "../third_party/coreJSON/core_json.h"
 
 namespace jsonParser
 {
