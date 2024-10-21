@@ -17,6 +17,7 @@ option("board")
 
 includes("../common/json_parser")
 includes("../common/config_broker") 
+includes("../common/config_consumer")
 
 
 -- Library for Mocked logger service
@@ -61,6 +62,8 @@ firmware("config-broker-ibex-sim")
     add_deps("logger")
     add_deps("rgb_led")
     add_deps("user_led")
+    add_deps("config_consumer")
+    
     -- compartments
     add_deps("mqtt")
     add_deps("provider")
