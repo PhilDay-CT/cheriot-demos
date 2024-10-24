@@ -4,8 +4,10 @@
 
 -- Consumer compartments 
 compartment("consumer1")
+    add_includedirs("../..")
     add_files("consumer1.cc")
 
 compartment("consumer2")
+    add_includedirs("../..")
     add_files("consumer2.cc")
 

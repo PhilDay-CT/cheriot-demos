@@ -2,7 +2,8 @@
 -- SPDX-License-Identifier: MIT
 
 
--- Patser for the RGB LED configuration
-compartment("parser_rgb_led")
+-- Patser for the logger configuration
+compartment("parser_logger")
+    add_includedirs("../../..")
     add_files("parser.cc")
 

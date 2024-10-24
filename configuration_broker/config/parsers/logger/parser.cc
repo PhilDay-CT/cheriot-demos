@@ -40,12 +40,12 @@
 // Expose debugging features unconditionally for this compartment.
 using Debug = ConditionalDebug<true, "Logger Parser">;
 
-#include "../parser_helper.h"
+#include "config/parser_helper.h"
 
 // Set for Items we are allowed to register a parser for
-#include "../../config_broker/config_broker.h"
+#include "common/config_broker/config_broker.h"
 
-#include "../../include/logger.h"
+#include "config/include/logger.h"
 #define LOGGER_CONFIG "logger"
 DEFINE_PARSER_CONFIG_CAPABILITY(LOGGER_CONFIG, sizeof(LoggerConfig), 500);
 
