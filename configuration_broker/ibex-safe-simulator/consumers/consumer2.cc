@@ -29,7 +29,7 @@ using Debug = ConditionalDebug<true, "Consumer #2">;
 
 namespace
 {
-	
+
 	static LoggerConfig *logger;
 
 	/**
@@ -37,7 +37,6 @@ namespace
 	 */
 	int logger_handler(void *newConfig)
 	{
-		
 		// Claim the config against our heap quota to ensure
 		// it remains available, as the broker will free it
 		// when it gets a new value.
@@ -52,9 +51,9 @@ namespace
 
 		// Process the configuration change
 		Debug::log("Configured with host: {} port: {} level: {}",
-	           (const char *)logger->host.address,
-	           (int16_t)logger->host.port,
-	           logger->level);
+		           (const char *)logger->host.address,
+		           (int16_t)logger->host.port,
+		           logger->level);
 
 		if (oldConfig)
 		{
@@ -69,7 +68,7 @@ namespace
 	int user_led_handler(void *newConfig)
 	{
 		// Make a fast claim on the new config value - we only
-		// need it for the duration of this call  
+		// need it for the duration of this call
 		Timeout t{10};
 		if (heap_claim_fast(&t, newConfig) < 0)
 		{
@@ -79,17 +78,19 @@ namespace
 
 		// Configure the controller
 		auto config = static_cast<userLed::Config *>(newConfig);
-		if (logger) {
-			if (logger->level == logLevel::Debug) {
+		if (logger)
+		{
+			if (logger->level == logLevel::Debug)
+			{
 				Debug::log("User LEDs: {} {} {} {} {} {} {} {}",
-				config->led0,
-				config->led1,
-				config->led2,
-				config->led3,
-				config->led4,
-				config->led5,
-				config->led6,
-				config->led7);
+				           config->led0,
+				           config->led1,
+				           config->led2,
+				           config->led3,
+				           config->led4,
+				           config->led5,
+				           config->led6,
+				           config->led7);
 			}
 		}
 
@@ -107,7 +108,12 @@ void __cheri_compartment("consumer2") init()
 {
 	// List of configuration items we are tracking
 	ConfigConsumer::ConfigItem configItems[] = {
-	  {READ_CONFIG_CAPABILITY(LOGGER_CONFIG), logger_handler, 0, nullptr,},
+	  {
+	    READ_CONFIG_CAPABILITY(LOGGER_CONFIG),
+	    logger_handler,
+	    0,
+	    nullptr,
+	  },
 	  {READ_CONFIG_CAPABILITY(USER_LED_CONFIG), user_led_handler, 0, nullptr},
 	};
 

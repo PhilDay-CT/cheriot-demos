@@ -32,8 +32,10 @@ namespace
 		uint32_t                  minTicks; // Min system ticks between updates
 		uint64_t                  nextUpdate; // Time of next valid update
 		FlagLockPriorityInherited lock; // lock to prevent concurrent changes
-		int __cheri_callback (*parser)(const char *json, size_t jsonLength, void *dst);
-		InternalConfigitem *next;
+		int                       __cheri_callback (*parser)(const char *json,
+                                       size_t      jsonLength,
+                                       void       *dst);
+		InternalConfigitem       *next;
 	};
 
 	/**
@@ -122,9 +124,8 @@ namespace
 int __cheri_compartment("config_broker")
   set_config(SObj sealedCap, const char *json, size_t jsonLength)
 {
-	Debug::log("thread {} Set config called for {}",
-	           thread_id_get(),
-	           sealedCap);
+	Debug::log(
+	  "thread {} Set config called for {}", thread_id_get(), sealedCap);
 
 	// Check that we've been given a valid capability
 	ConfigToken *token = config_capability_unseal(sealedCap, CONFIG_WRITE);
@@ -134,7 +135,6 @@ int __cheri_compartment("config_broker")
 		return -EPERM;
 	}
 
-	
 	// Find or create a config structure
 	InternalConfigitem *c = find_or_create_config(token);
 	if (c == nullptr)
@@ -199,9 +199,8 @@ int __cheri_compartment("config_broker")
 	// value, so just track through a readOnly capability
 	CHERI::Capability roData{newData};
 	roData.permissions() &=
-	  roData.permissions().without(CHERI::Permission::Store) & 
-	  roData.permissions().without(CHERI::Permission::LoadStoreCapability)
-	  ;
+	  roData.permissions().without(CHERI::Permission::Store) &
+	  roData.permissions().without(CHERI::Permission::LoadStoreCapability);
 
 	// Keep track of the old value so we can free it
 	auto oldData = c->data;
@@ -289,9 +288,9 @@ ConfigItem __cheri_compartment("config_broker") get_config(SObj sealedCap)
 /**
  * Set the parser for a config item.
  */
-int __cheri_compartment("config_broker")
-  set_parser(SObj                 sealedCap,
-             __cheri_callback int parser(const char *json, size_t jsonLength, void *dst))
+int __cheri_compartment("config_broker") set_parser(
+  SObj                 sealedCap,
+  __cheri_callback int parser(const char *json, size_t jsonLength, void *dst))
 {
 	Debug::log(
 	  "thread {} set parser called with {}", thread_id_get(), sealedCap);

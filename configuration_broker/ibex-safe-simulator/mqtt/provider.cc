@@ -45,13 +45,13 @@ namespace
 		if (!init)
 		{
 			configItemMap[0].name = "logger";
-			configItemMap[0].cap   = WRITE_CONFIG_CAPABILITY(LOGGER_CONFIG);
+			configItemMap[0].cap  = WRITE_CONFIG_CAPABILITY(LOGGER_CONFIG);
 
 			configItemMap[1].name = "rgbled";
-			configItemMap[1].cap   = WRITE_CONFIG_CAPABILITY(RGB_LED_CONFIG);
+			configItemMap[1].cap  = WRITE_CONFIG_CAPABILITY(RGB_LED_CONFIG);
 
 			configItemMap[2].name = "userled";
-			configItemMap[2].cap   = WRITE_CONFIG_CAPABILITY(USER_LED_CONFIG);
+			configItemMap[2].cap  = WRITE_CONFIG_CAPABILITY(USER_LED_CONFIG);
 
 			init = true;
 		}
@@ -103,5 +103,4 @@ int updateConfig(const char *name,
 	}
 
 	return res;
-
 };

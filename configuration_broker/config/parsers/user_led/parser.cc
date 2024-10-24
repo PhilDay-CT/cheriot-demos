@@ -51,11 +51,12 @@ using Debug = ConditionalDebug<true, "Parser">;
 #define USER_LED_CONFIG "user_led"
 DEFINE_PARSER_CONFIG_CAPABILITY(USER_LED_CONFIG, sizeof(userLed::Config), 1800);
 
-
 /**
  * Parse a json string into an User LED Config struct.
  */
-int __cheri_callback parse_User_LED_config(const char *json, size_t jsonLength, void *dst)
+int __cheri_callback parse_User_LED_config(const char *json,
+                                           size_t      jsonLength,
+                                           void       *dst)
 {
 	auto        *config = static_cast<userLed::Config *>(dst);
 	JSONStatus_t result;
@@ -72,14 +73,14 @@ int __cheri_callback parse_User_LED_config(const char *json, size_t jsonLength, 
 
 	// query the individual values and populate the config struct
 	bool parsed = true;
-	parsed      = parsed && get_enum<userLed::State>(json, "led0", &config->led0);
-	parsed      = parsed && get_enum<userLed::State>(json, "led1", &config->led1);
-	parsed      = parsed && get_enum<userLed::State>(json, "led2", &config->led2);
-	parsed      = parsed && get_enum<userLed::State>(json, "led3", &config->led3);
-	parsed      = parsed && get_enum<userLed::State>(json, "led4", &config->led4);
-	parsed      = parsed && get_enum<userLed::State>(json, "led5", &config->led5);
-	parsed      = parsed && get_enum<userLed::State>(json, "led6", &config->led6);
-	parsed      = parsed && get_enum<userLed::State>(json, "led7", &config->led7);
+	parsed = parsed && get_enum<userLed::State>(json, "led0", &config->led0);
+	parsed = parsed && get_enum<userLed::State>(json, "led1", &config->led1);
+	parsed = parsed && get_enum<userLed::State>(json, "led2", &config->led2);
+	parsed = parsed && get_enum<userLed::State>(json, "led3", &config->led3);
+	parsed = parsed && get_enum<userLed::State>(json, "led4", &config->led4);
+	parsed = parsed && get_enum<userLed::State>(json, "led5", &config->led5);
+	parsed = parsed && get_enum<userLed::State>(json, "led6", &config->led6);
+	parsed = parsed && get_enum<userLed::State>(json, "led7", &config->led7);
 
 	// Free any heap the parser might have left allocated.
 	// Calling heap_free_all() is quite expensive as it has to walk all
