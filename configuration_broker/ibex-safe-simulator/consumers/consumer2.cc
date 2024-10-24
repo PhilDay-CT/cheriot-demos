@@ -30,7 +30,7 @@ using Debug = ConditionalDebug<true, "Consumer #2">;
 namespace
 {
 	
-	static LoggerConfig *config;
+	static LoggerConfig *logger;
 
 	/**
 	 * Handle updates to the logger configuration
@@ -47,14 +47,14 @@ namespace
 			return -1;
 		}
 
-		auto oldConfig = config;
-		config         = static_cast<LoggerConfig *>(newConfig);
+		auto oldConfig = logger;
+		logger         = static_cast<LoggerConfig *>(newConfig);
 
 		// Process the configuration change
 		Debug::log("Configured with host: {} port: {} level: {}",
-	           (const char *)config->host.address,
-	           (int16_t)config->host.port,
-	           config->level);
+	           (const char *)logger->host.address,
+	           (int16_t)logger->host.port,
+	           logger->level);
 
 		if (oldConfig)
 		{
@@ -68,13 +68,10 @@ namespace
 	 */
 	int user_led_handler(void *newConfig)
 	{
-		// Claim the config against our heap quota to ensure
-		// it remains available, as the broker will free it
-		// when it gets a new value.
-		//
-		// The call to configure the led might be into another
-		// compartment so we can't rely on the fast claim
-		if (heap_claim(MALLOC_CAPABILITY, newConfig) == 0)
+		// Make a fast claim on the new config value - we only
+		// need it for the duration of this call  
+		Timeout t{10};
+		if (heap_claim_fast(&t, newConfig) < 0)
 		{
 			Debug::log("Failed to claim {}", newConfig);
 			return -1;
@@ -82,19 +79,19 @@ namespace
 
 		// Configure the controller
 		auto config = static_cast<userLed::Config *>(newConfig);
-		Debug::log("User LEDs: {} {} {} {} {} {} {} {}",
-	           config->led0,
-	           config->led1,
-	           config->led2,
-	           config->led3,
-	           config->led4,
-	           config->led5,
-	           config->led6,
-	           config->led7);
-
-		// We can assume the controller has used these values
-		// now so just release our claim on the config
-		free(newConfig);
+		if (logger) {
+			if (logger->level == logLevel::Debug) {
+				Debug::log("User LEDs: {} {} {} {} {} {} {} {}",
+				config->led0,
+				config->led1,
+				config->led2,
+				config->led3,
+				config->led4,
+				config->led5,
+				config->led6,
+				config->led7);
+			}
+		}
 
 		return 0;
 	}

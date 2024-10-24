@@ -28,30 +28,30 @@ namespace
 {
 
 	/**
-	 * Map of Config values to topics
+	 * Map of Config names to capabilites
 	 */
 	struct Config
 	{
-		const char *topic;
+		const char *name;
 		SObj        cap; // Sealed Write Capability
 	};
 
 	// We can't use the macros at the file level to statically
-	// initialise topicMap, so do it via a function
-	Config topicMap[3];
-	void   set_up_topic_map()
+	// initialise configItemMap, so do it via a function
+	Config configItemMap[3];
+	void   set_up_name_map()
 	{
 		static bool init = false;
 		if (!init)
 		{
-			topicMap[0].topic = "logger";
-			topicMap[0].cap   = WRITE_CONFIG_CAPABILITY(LOGGER_CONFIG);
+			configItemMap[0].name = "logger";
+			configItemMap[0].cap   = WRITE_CONFIG_CAPABILITY(LOGGER_CONFIG);
 
-			topicMap[1].topic = "rgbled";
-			topicMap[1].cap   = WRITE_CONFIG_CAPABILITY(RGB_LED_CONFIG);
+			configItemMap[1].name = "rgbled";
+			configItemMap[1].cap   = WRITE_CONFIG_CAPABILITY(RGB_LED_CONFIG);
 
-			topicMap[2].topic = "userled";
-			topicMap[2].cap   = WRITE_CONFIG_CAPABILITY(USER_LED_CONFIG);
+			configItemMap[2].name = "userled";
+			configItemMap[2].cap   = WRITE_CONFIG_CAPABILITY(USER_LED_CONFIG);
 
 			init = true;
 		}
@@ -61,33 +61,31 @@ namespace
 
 /**
  * Update a configuration item using the JSON string
- * received on a particular topic. With a real MQTT
- * client this would be the callback registered when
- * subscribing to the topic.
+ * received via a services such as MQTT.
  */
-int updateConfig(const char *topic,
-                 size_t      topicLength,
-                 const void *payload,
-                 size_t      payloadLength)
+int updateConfig(const char *name,
+                 size_t      nameLength,
+                 const void *json,
+                 size_t      jsonLength)
 {
-	std::string_view svT(topic, topicLength);
-	std::string_view svP((char *)payload, payloadLength);
-	Debug::log("thread {} got {} on {}", thread_id_get(), svP, svT);
+	std::string_view svName(name, nameLength);
+	std::string_view svJson((char *)json, jsonLength);
+	Debug::log("thread {} got {} on {}", thread_id_get(), svName, svJson);
 
-	// Initalise the topic map
-	set_up_topic_map();
+	// Initalise the name map
+	set_up_name_map();
 
 	bool found = false;
 	int  res   = -1;
 
-	// Use the topicMap to work out which value the
+	// Use the configItemMap to work out which value the
 	// message is for.
-	for (auto t : topicMap)
+	for (auto t : configItemMap)
 	{
-		if (strncmp(t.topic, topic, topicLength) == 0)
+		if (strncmp(t.name, name, nameLength) == 0)
 		{
 			found = true;
-			res   = set_config(t.cap, (const char *)payload, payloadLength);
+			res   = set_config(t.cap, (const char *)json, jsonLength);
 			if (res < 0)
 			{
 				Debug::log("thread {} Failed to set value for {}",
@@ -101,7 +99,7 @@ int updateConfig(const char *topic,
 	if (!found)
 	{
 		Debug::log(
-		  "thread {} Unexpected Message topic {}", thread_id_get(), topic);
+		  "thread {} Unknown config item name {}", thread_id_get(), svName);
 	}
 
 	return res;
