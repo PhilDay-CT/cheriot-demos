@@ -14,7 +14,7 @@ using Debug = ConditionalDebug<true, "Provider">;
  * Define the sealed capabilites for each of the configuration
  * items this compartment is allowed to update
  */
-#include "../config_broker/config_broker.h"
+#include "common/config_broker/config_broker.h"
 #define RGB_LED_CONFIG "rgb_led"
 DEFINE_WRITE_CONFIG_CAPABILITY(RGB_LED_CONFIG)
 
@@ -65,11 +65,10 @@ namespace
  * client this would be the callback registered when
  * subscribing to the topic.
  */
-int __cheri_compartment("provider")
-  updateConfig(const char *topic,
-               size_t      topicLength,
-               const void *payload,
-               size_t      payloadLength)
+int updateConfig(const char *topic,
+                 size_t      topicLength,
+                 const void *payload,
+                 size_t      payloadLength)
 {
 	std::string_view svT(topic, topicLength);
 	std::string_view svP((char *)payload, payloadLength);
@@ -106,4 +105,5 @@ int __cheri_compartment("provider")
 	}
 
 	return res;
+
 };

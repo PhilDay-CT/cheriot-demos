@@ -7,7 +7,7 @@
 #include <stddef.h>
 #include <string.h>
 
-#include "../json_parser/json_parser.h"
+#include "common/json_parser/json_parser.h"
 
 /**
  *

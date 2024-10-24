@@ -3,6 +3,8 @@
 
 
 -- Provider Compartment
-compartment("provider")
+compartment("mqtt")
+    add_includedirs("../..")
+    add_files("mqtt_stub.cc")
     add_files("provider.cc")
 
