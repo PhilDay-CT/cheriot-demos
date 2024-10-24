@@ -29,7 +29,7 @@ using Debug = ConditionalDebug<true, "Consumer #1">;
 
 namespace
 {
-	static LoggerConfig *config;
+	static LoggerConfig *logger;
 
 	/**
 	 * Handle updates to the logger configuration
@@ -37,22 +37,22 @@ namespace
 	int logger_handler(void *newConfig)
 	{		
 		// Claim the config against our heap quota to ensure
-		// it remains available, as the broker will free it
-		// when it gets a new value.
+		// it remains available, as we will use it when other
+		// confog values change.
 		if (heap_claim(MALLOC_CAPABILITY, newConfig) == 0)
 		{
 			Debug::log("Failed to claim {}", newConfig);
 			return -1;
 		}
 
-		auto oldConfig = config;
-		config = static_cast<LoggerConfig *>(newConfig);
+		auto oldConfig = logger;
+		logger = static_cast<LoggerConfig *>(newConfig);
 
 		// Process the configuration change
 		Debug::log("Configured with host: {} port: {} level: {}",
-	           (const char *)config->host.address,
-	           (int16_t)config->host.port,
-	           config->level);
+	           (const char *)logger->host.address,
+	           (int16_t)logger->host.port,
+	           logger->level);
 
 		// Release our claim on the old config.  Note this is a safer
 		// pattern that relasing it before we process the new value in
@@ -70,13 +70,10 @@ namespace
 	 */
 	int led_handler(void *newConfig)
 	{
-		// Claim the config against our heap quota to ensure
-		// it remains available, as the broker will free it
-		// when it gets a new value.
-		//
-		// The call to configure the led might be into another
-		// compartment so we can't rely on the fast claim
-		if (heap_claim(MALLOC_CAPABILITY, newConfig) == 0)
+		// Make a fast claim on the new config value - we only
+		// need it for the duration of this call  
+		Timeout t{10};
+		if (heap_claim_fast(&t, newConfig) < 0)
 		{
 			Debug::log("Failed to claim {}", newConfig);
 			return -1;
@@ -84,18 +81,18 @@ namespace
 
 		// Process the configuration 
 		auto config = static_cast<rgbLed::Config *>(newConfig);
-		Debug::log("LED 0 red: {} green: {} blue: {}",
-	           config->led0.red,
-	           config->led0.green,
-	           config->led0.blue);
-		Debug::log("LED 1 red: {} green: {} blue: {}",
-	           config->led1.red,
-	           config->led1.green,
-	           config->led1.blue);
-
-		// We can assume the controller has used these values
-		// now so just release our claim on the config
-		free(newConfig);
+		if (logger) {
+			if (logger->level == logLevel::Debug) {
+				Debug::log("LED 0 red: {} green: {} blue: {}",
+					config->led0.red,
+					config->led0.green,
+					config->led0.blue);
+				Debug::log("LED 1 red: {} green: {} blue: {}",
+					config->led1.red,
+					config->led1.green,
+					config->led1.blue);
+			}
+		}
 
 		return 0;
 	}
