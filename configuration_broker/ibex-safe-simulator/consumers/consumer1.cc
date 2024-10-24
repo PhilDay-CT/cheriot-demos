@@ -35,7 +35,7 @@ namespace
 	 * Handle updates to the logger configuration
 	 */
 	int logger_handler(void *newConfig)
-	{		
+	{
 		// Claim the config against our heap quota to ensure
 		// it remains available, as we will use it when other
 		// confog values change.
@@ -46,17 +46,17 @@ namespace
 		}
 
 		auto oldConfig = logger;
-		logger = static_cast<LoggerConfig *>(newConfig);
+		logger         = static_cast<LoggerConfig *>(newConfig);
 
 		// Process the configuration change
 		Debug::log("Configured with host: {} port: {} level: {}",
-	           (const char *)logger->host.address,
-	           (int16_t)logger->host.port,
-	           logger->level);
+		           (const char *)logger->host.address,
+		           (int16_t)logger->host.port,
+		           logger->level);
 
 		// Release our claim on the old config.  Note this is a safer
 		// pattern that relasing it before we process the new value in
-		// case the processing keeps some reference to the value.  
+		// case the processing keeps some reference to the value.
 		if (oldConfig)
 		{
 			free(oldConfig);
@@ -71,7 +71,7 @@ namespace
 	int led_handler(void *newConfig)
 	{
 		// Make a fast claim on the new config value - we only
-		// need it for the duration of this call  
+		// need it for the duration of this call
 		Timeout t{10};
 		if (heap_claim_fast(&t, newConfig) < 0)
 		{
@@ -79,18 +79,20 @@ namespace
 			return -1;
 		}
 
-		// Process the configuration 
+		// Process the configuration
 		auto config = static_cast<rgbLed::Config *>(newConfig);
-		if (logger) {
-			if (logger->level == logLevel::Debug) {
+		if (logger)
+		{
+			if (logger->level == logLevel::Debug)
+			{
 				Debug::log("LED 0 red: {} green: {} blue: {}",
-					config->led0.red,
-					config->led0.green,
-					config->led0.blue);
+				           config->led0.red,
+				           config->led0.green,
+				           config->led0.blue);
 				Debug::log("LED 1 red: {} green: {} blue: {}",
-					config->led1.red,
-					config->led1.green,
-					config->led1.blue);
+				           config->led1.red,
+				           config->led1.green,
+				           config->led1.blue);
 			}
 		}
 
@@ -108,7 +110,7 @@ void __cheri_compartment("consumer1") init()
 {
 	/// List of configuration items we are tracking
 	ConfigConsumer::ConfigItem configItems[] = {
-	  {READ_CONFIG_CAPABILITY(LOGGER_CONFIG), logger_handler,  0, nullptr},
+	  {READ_CONFIG_CAPABILITY(LOGGER_CONFIG), logger_handler, 0, nullptr},
 	  {READ_CONFIG_CAPABILITY(RGB_LED_CONFIG), led_handler, 0, nullptr},
 	};
 

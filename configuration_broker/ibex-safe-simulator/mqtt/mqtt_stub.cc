@@ -163,7 +163,8 @@ void __cheri_compartment("mqtt") mqtt_init()
 	{
 		Debug::log("-------- {} --------", m.description);
 		Debug::log("thread {} Send {} {}", thread_id_get(), m.topic, m.json);
-		auto res = updateConfig(m.topic, strlen(m.topic), m.json, strlen(m.json));
+		auto res =
+		  updateConfig(m.topic, strlen(m.topic), m.json, strlen(m.json));
 		Debug::Assert(res == m.expected, "Unexpected result {}", res);
 
 		// Give the consumers a chance to run

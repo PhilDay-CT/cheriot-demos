@@ -8,25 +8,26 @@
  * with a set of eight LEDs that can be turned on and off
  * (such as the user LEDs on a Sonata Board)
  */
-namespace userLed {
-
-enum class State
+namespace userLed
 {
-	Off = 0,
-	On  = 1,
-};
 
-struct Config
-{
-	State led0;
-	State led1;
-	State led2;
-	State led3;
-	State led4;
-	State led5;
-	State led6;
-	State led7;
-};
+	enum class State
+	{
+		Off = 0,
+		On  = 1,
+	};
+
+	struct Config
+	{
+		State led0;
+		State led1;
+		State led2;
+		State led3;
+		State led4;
+		State led5;
+		State led6;
+		State led7;
+	};
 
 } // namespace userLed
 

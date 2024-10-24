@@ -52,7 +52,9 @@ DEFINE_PARSER_CONFIG_CAPABILITY(LOGGER_CONFIG, sizeof(LoggerConfig), 500);
 /**
  * Parse a json string into a LoggerConfig struct.
  */
-int __cheri_callback parse_logger_config(const char *json, size_t jsonLength, void *dst)
+int __cheri_callback parse_logger_config(const char *json,
+                                         size_t      jsonLength,
+                                         void       *dst)
 {
 	auto        *config = static_cast<LoggerConfig *>(dst);
 	JSONStatus_t result;

@@ -6,4 +6,3 @@
 compartment("parser_logger")
     add_includedirs("../../..")
     add_files("parser.cc")
-

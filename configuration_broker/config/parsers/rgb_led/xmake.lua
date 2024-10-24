@@ -6,4 +6,3 @@
 compartment("parser_rgb_led")
     add_includedirs("../../..")
     add_files("parser.cc")
-
