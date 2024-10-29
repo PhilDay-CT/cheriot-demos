@@ -19,7 +19,9 @@ As well as providing run time controls this aspect of the configuration can be a
 
 * A sandbox compartment in which untrusted data can be verified and converted to trusted configuration values.
 
-In the context of this example the Configuration Broker is intended to be directly reusable, whilst the providers and consumers are example code of how to develop such components using CHERIoT features such as static sealed capabilities, memory claims, locks, event-waiters, and sandbox compartments for handling untrusted data.
+The core Configuration Broker has been written to be generic and directly reusable, and has no dependencies on the specific configuration items being managed.
+To builds (ibex-sim and Sonata) are provided to show how this can then be incoprated into systems, with supporting code to deal with specific configrutaion items.
+All are example of how to develop such components using CHERIoT features such as static sealed capabilities, memory claims, locks, event-waiters, and sandbox compartments for handling untrusted data.
 
 Providing a generic broker and expressing the trust model via its interfaces makes it possible to add support for new configuration items without having to re-evaluate the trust model each time. 
 
@@ -42,14 +44,12 @@ This means this aspect is fixed at build time and is auditable.
 ```mermaid
 block-beta
     columns 5
-    mqtt("MQTT") space:4
     space:4 consumer#1("Consumer #1")
-    provider("Provider") space broker("Broker") space:2
+    provider("MQTT") space broker("Broker") space:2
     space:4 consumer#2("Consumer #2")
     space:5
     space:1 parser#1("Parser #1") parser#2("Parser #2") parser#3("Parser #3") 
     
-    mqtt --> provider
     provider-- "set" -->broker
     consumer#1-- "get" -->broker
     consumer#2-- "get" -->broker
@@ -63,7 +63,8 @@ The configuration data is declarative so there is no need or value in maintainin
 Aligned with the pub/sub model publishing items and subscribing for items can happen in any sequence; a consumer will receive any data that is already published, and any subsequent updates.
 This avoids any timing issues during system startup.
 
-In the demo new values are provided as serialised JSON strings, with each item coming from a specific topic from a (not included) MQTT Broker.
+In the demo new values are provided as serialised JSON strings.
+Depending on the build target these are either predefined test data (ibex-sim) or come via MQTT (Sonata). 
 The Provider is in effect simply an authorised mapping between the topics and configuration items.
 The Parsers and Consumers contain code which is specific to each item.
 The Broker is agnostic to the details of configuration items, and has no prior knowledge of which items exist.
@@ -168,7 +169,61 @@ The Consumer can not affect the Brokers heap quota; if the Consumer fails to mak
 The Consumer is trusting that Broker will not block it's thread when it reads a value.
 It has control over when it's thread waits on the futex for a new version, and for how long to wait. 
 
-## Data in the demo
+## Initalisation
+A key aspect of the design is to be able to add new configuration items just by creating the associated sealed capabilities and assigning them to the appropriate compartments.
+To support this approach each parser must register with the broker.
+This is turn creates an initialisation issue as the parsers do not have their own thread (the run on the thread that want's to set a vew value), and Cheriot has no general init mechanism.
+Ideally we would restrict the scope of who can call a parser to just the config-broker, but that would require the broker to know about all parsers.
+Instead we add a build-specific parser-init compartment, that is used as the stating point for the provide thread.
+This calls each of the parsers before transfering into the mqtt thread, which allows us to still assert limits around access to the parsers. 
+
+## Code Strcuture
+The demo can be built for two targets.
+* ibex-safe-simulator provides a self contained demo that can run in the dev container and shows the principles of the broker in operation.  
+* sonata provides a deployment for a sonata board using the user and RGB LEDs with data provided by the MQTT network stack.
+
+To support these two builds, and show how the common aspects of the broker can be used in other systems, the code is structured as follows:
+**/common** - code that is indepenent from specific configuration items
+**/config** - definitions of configruation data and the associated parsers
+**/ibex-safe-simulator** - demo providers and consumers that do not need h/w
+**/sonata** - MQTT network provider and Sonata configuration consumers
+
+_/config could be considered platform specific, but in this example some data types and parsers are common to both builds._
+
+```
+├── common
+│   ├── config_broker
+│   │   └── << Generic Config broker compartment >>
+│   ├── config_consumer
+│   │   └── << Generic consumer library >>
+│   ├── json_parser
+│   │   └── << A wapper to the coreJSON module >>
+│   └── third_party
+│       └── coreJSON
+│           └── << a copy of the freeRTOS coreJSON module  >>
+|
+├── config
+│   ├── include
+│   │   └── << Header files defining configurtaion item data strcutures >>
+│   ├── parser_helper.h
+│   └── parsers
+│       └── << Parsers for each configutaion item >>
+|
+├── ibex-safe-simulator
+│   ├── consumers
+│   │   └── << Example consumers >>
+│   ├── mqtt
+│   │   └── << A test stub that acts like an MQTT client>>
+│   ├── parser_init
+│   │   └── << Build specific parser iniatliser>>
+│   └── xmake.lua
+|
+└── sonata
+
+```
+
+
+## IBEX Simulator
 
 The demo uses three configuration values; two based on Sonata board and a third more contrived for the demo.
 The values are mix of strings, numbers, and enumerations.  
@@ -211,15 +266,14 @@ A contrived example to include a string (to show buffer overflow handling) and w
 }
 ```
 
-A thread which starts in the MQTT stub provides a sequence of valid and invalid configuration values from the corresponding topics.
-
-A single Provider act as the MQTT client and maps the messages against its set of sealed capabilities based on the topic.   
+A thread which starts in the MQTT stub provides a sequence of valid and invalid configuration values from the corresponding topics. 
 
 There are two Consumers in the demo, each implemented as separate compartments.
 
 Consumer #1 is authorised to receive the RGB LED configuration.
 Consumer #2 is authorised to receive the User LED configuration.
-Both consumers are authorised to receive the Logger configuration.  
+Both consumers are authorised to receive the Logger configuration.
+The latest logger configuration is used when updating the LED configurtaions to show the use of heap claims to kept a value available between updates.
 
 A thread is started in each consumer which waits for new versions to become available and then, to keep the demo h/w agnostic, makes a library call to print the received value.
 
@@ -227,8 +281,8 @@ The following sequence diagram shows the flow of the threads across the compartm
 
 ```mermaid
 sequenceDiagram
+  participant Parser
   participant MQTT
-  participant Provider
   participant Parser as Parser(s)
   participant Broker as Config Broker
   participant Futex as Version Futex
@@ -302,7 +356,6 @@ sequenceDiagram
   MQTT ->> MQTT : sleep()
   MQTT ->> Provider: (topic, json)
   deactivate MQTT
-
 
 ```
 The demo uses the "ibex-safe-simulator" board as its target, since this provides a realtime clock.
