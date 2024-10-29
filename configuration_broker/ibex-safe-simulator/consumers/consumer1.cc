@@ -27,6 +27,9 @@ using Debug = ConditionalDebug<true, "Consumer #1">;
 
 #include "common/config_consumer/config_consumer.h"
 
+// For this version we want the consumer threads to exit itr 
+
+
 namespace
 {
 	static LoggerConfig *logger;
@@ -70,15 +73,10 @@ namespace
 	 */
 	int led_handler(void *newConfig)
 	{
-		// Make a fast claim on the new config value - we only
+		// Note the consumer helper will have already made a 
+		// fast claim on the new config value, and we only
 		// need it for the duration of this call
-		Timeout t{10};
-		if (heap_claim_fast(&t, newConfig) < 0)
-		{
-			Debug::log("Failed to claim {}", newConfig);
-			return -1;
-		}
-
+		
 		// Process the configuration
 		auto config = static_cast<rgbLed::Config *>(newConfig);
 		if (logger)
@@ -116,5 +114,5 @@ void __cheri_compartment("consumer1") init()
 
 	size_t numOfItems = sizeof(configItems) / sizeof(configItems[0]);
 
-	ConfigConsumer::run(configItems, numOfItems);
+	ConfigConsumer::run(configItems, numOfItems, MAX_CONFIG_TIMEOUTS);
 }

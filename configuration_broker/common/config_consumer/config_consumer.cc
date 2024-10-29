@@ -23,7 +23,7 @@ namespace ConfigConsumer
 	 * or more configuration values and then calls the
 	 * appropriate handler.
 	 */
-	void __cheri_libcall run(ConfigItem configItems[], size_t numOfItems)
+	void __cheri_libcall run(ConfigItem configItems[], size_t numOfItems, uint16_t maxTimeouts)
 	{
 		// Just for the demo keep track of the number to timeouts to give
 		// a clean exit
@@ -32,7 +32,7 @@ namespace ConfigConsumer
 		// Create the multi waiter
 		struct MultiWaiter *mw = nullptr;
 		Timeout             t1{MS_TO_TICKS(1000)};
-		multiwaiter_create(&t1, MALLOC_CAPABILITY, &mw, 2);
+		multiwaiter_create(&t1, MALLOC_CAPABILITY, &mw, numOfItems);
 		if (mw == nullptr)
 		{
 			Debug::log("thread {} failed to create multiwaiter",
@@ -123,14 +123,15 @@ namespace ConfigConsumer
 
 			// Wait for a version to change
 			Timeout t{MS_TO_TICKS(10000)};
-			if (multiwaiter_wait(&t, mw, events, 2) != 0)
+			if (multiwaiter_wait(&t, mw, events, numOfItems) != 0)
 			{
 				num_timeouts++;
 				Debug::log(
 				  "thread {} wait timeout {}", thread_id_get(), num_timeouts);
 				// For the demo exit the thread when we stop getting updates
-				if (num_timeouts >= 2)
+				if (maxTimeouts >0 && num_timeouts >= maxTimeouts) {
 					break;
+				}
 			}
 			else
 			{

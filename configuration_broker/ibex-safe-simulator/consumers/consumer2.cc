@@ -67,14 +67,9 @@ namespace
 	 */
 	int user_led_handler(void *newConfig)
 	{
-		// Make a fast claim on the new config value - we only
+		// Note the consumer helper will have already made a 
+		// fast claim on the new config value, and we only
 		// need it for the duration of this call
-		Timeout t{10};
-		if (heap_claim_fast(&t, newConfig) < 0)
-		{
-			Debug::log("Failed to claim {}", newConfig);
-			return -1;
-		}
 
 		// Configure the controller
 		auto config = static_cast<userLed::Config *>(newConfig);
@@ -119,5 +114,5 @@ void __cheri_compartment("consumer2") init()
 
 	size_t numOfItems = sizeof(configItems) / sizeof(configItems[0]);
 
-	ConfigConsumer::run(configItems, numOfItems);
+	ConfigConsumer::run(configItems, numOfItems, MAX_CONFIG_TIMEOUTS);
 }
