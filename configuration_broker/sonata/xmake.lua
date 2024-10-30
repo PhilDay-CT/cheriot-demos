@@ -30,12 +30,13 @@ compartment("parser_init")
 -- Configuration JSON parser sandboxes
 includes("../config/parsers/rgb_led")
 includes("../config/parsers/user_led")
+includes("../config/parsers/system_config")
 
 -- Consumers
 includes("consumers")
 
 -- Firmware image for the example.
-firmware("config-broker-ibex-sim")
+firmware("config-broker-sonata")
     add_deps("freestanding", "debug", "string")
 
     -- libraries
@@ -45,11 +46,16 @@ firmware("config-broker-ibex-sim")
     -- compartments
     add_deps("mqtt")
     add_deps("config_broker")
+
     add_deps("parser_init")
+    add_deps("parser_system_config")
     add_deps("parser_rgb_led")
     add_deps("parser_user_led")
-    add_deps("consumer1")
-    add_deps("consumer2")
+    
+    add_deps("user_led")
+    add_deps("rgb_led")
+    add_deps("lcd")
+    
     on_load(function(target)
         target:values_set("board", "$(board)")
         target:values_set("threads", {
@@ -64,18 +70,27 @@ firmware("config-broker-ibex-sim")
                 trusted_stack_frames = 8
             },
             {
-                -- Thread to consume config values.
-                -- Starts and loops in consumer1
-                compartment = "consumer1",
+                -- Thread to consume rgb_led values.
+                -- Starts and loops in rgb_led
+                compartment = "rgb_led",
                 priority = 2,
                 entry_point = "init",
                 stack_size = 0x500,
                 trusted_stack_frames = 4
             },
             {
-                -- Thread to consume config values.
-                -- Starts and loops in consumer2
-                compartment = "consumer2",
+                -- Thread to consume user_led values.
+                -- Starts and loops in user_led
+                compartment = "user_led",
+                priority = 2,
+                entry_point = "init",
+                stack_size = 0x500,
+                trusted_stack_frames = 4
+            },
+            {
+                -- Thread to consume lcd values.
+                -- Starts and loops in lcd
+                compartment = "lcd",
                 priority = 2,
                 entry_point = "init",
                 stack_size = 0x500,

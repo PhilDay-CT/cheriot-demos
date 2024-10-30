@@ -70,6 +70,12 @@ namespace
 	// Set of messages to publish.
 	const Message Messages[] = {
 
+	  // Valid System config
+	  {"Valid System config",
+	   0,
+	   "system",
+	   "{\"group\": \"group1\",  \"kind\": \"lowRISC\"}"},
+
 	  // Valid RGB LED config
 	  {"Valid RGB LED config",
 	   0,
@@ -83,6 +89,13 @@ namespace
 	   "userled",
 	   "{\"led0\":\"on\",\"led1\":\"off\",\"led2\":\"ON\",\"led3\":\"OFF\","
 	   " \"led4\":\"On\",\"led5\":\"Off\",\"led6\":\"on\",\"led7\":\"off\"}"},
+
+      // Change logo to CT
+	  {
+		"Valid System config",
+	    0,
+	    "system",
+	    "{\"group\": \"group2\",  \"kind\": \"ConfiguredThings\"}"},
 
 	  // Valid RGB LED config
 	  {"Valid RGB LED config",
@@ -104,6 +117,13 @@ namespace
 	   "rgbled",
 	   "{\"led0\":{\"red\":0,  \"green\":286,\"blue\":400},"
 	   " \"led1\":{\"red\":255,\"green\":200,\"blue\":200}}"},
+
+	  // System ID
+	  {
+		"Valid System config",
+	    0,
+	    "system",
+	    "{\"group\": \"Group3\",  \"kind\": \"ConfiguredThings\"}"}
 	};
 
 } // namespace
@@ -131,7 +151,7 @@ void __cheri_compartment("mqtt") mqtt_init()
 	}
 
 	// try to update the RGB LED too quickly
-	auto m = Messages[0];
+	auto m = Messages[1];
 	Debug::log("------- Update RGB LED --------");
 	auto res = updateConfig(m.topic, strlen(m.topic), m.json, strlen(m.json));
 	Debug::Assert(res == 0, "Unexpected result {}", res);

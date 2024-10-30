@@ -32,15 +32,10 @@ namespace
 	 */
 	int led_handler(void *newConfig)
 	{
-		// Make a fast claim on the new config value - we only
+		// Note the consumer helper will have already made a 
+		// fast claim on the new config value, and we only
 		// need it for the duration of this call
-		Timeout t{10};
-		if (heap_claim_fast(&t, newConfig) < 0)
-		{
-			Debug::log("Failed to claim {}", newConfig);
-			return -1;
-		}
-
+		
 		// Process the configuration
 		auto config = static_cast<rgbLed::Config *>(newConfig);
 		auto driver = MMIO_CAPABILITY(SonataRgbLedController, rgbled);
@@ -68,7 +63,7 @@ namespace
  * or more configuration values and then calls the
  * appropriate handler.
  */
-void __cheri_compartment("consumer1") init()
+void __cheri_compartment("rgb_led") init()
 {
 	/// List of configuration items we are tracking
 	ConfigConsumer::ConfigItem configItems[] = {

@@ -2,7 +2,7 @@
 -- SPDX-License-Identifier: MIT
 
 
--- Parser for the logger configuration
-compartment("parser_logger")
+-- Parser for the System configuration
+compartment("parser_system_config")
     add_includedirs("../../..")
     add_files("parser.cc")

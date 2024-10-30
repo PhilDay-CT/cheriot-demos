@@ -45,15 +45,10 @@ namespace
 	 */
 	int user_led_handler(void *newConfig)
 	{
-		// Make a fast claim on the new config value - we only
+		// Note the consumer helper will have already made a 
+		// fast claim on the new config value, and we only
 		// need it for the duration of this call
-		Timeout t{10};
-		if (heap_claim_fast(&t, newConfig) < 0)
-		{
-			Debug::log("Failed to claim {}", newConfig);
-			return -1;
-		}
-
+		
 		// Configure the controller
 		auto config = static_cast<userLed::Config *>(newConfig);
 		Debug::log("User LEDs: {} {} {} {} {} {} {} {}",
@@ -84,7 +79,7 @@ namespace
  * or more configuration values and then calls the
  * appropriate handler.
  */
-void __cheri_compartment("consumer2") init()
+void __cheri_compartment("user_led") init()
 {
 	// List of configuration items we are tracking
 	ConfigConsumer::ConfigItem configItems[] = {

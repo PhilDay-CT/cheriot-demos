@@ -30,7 +30,7 @@ using Debug = ConditionalDebug<true, "Consumer #2">;
 namespace
 {
 
-	static LoggerConfig *logger;
+	static logger::Config *logger;
 
 	/**
 	 * Handle updates to the logger configuration
@@ -47,7 +47,7 @@ namespace
 		}
 
 		auto oldConfig = logger;
-		logger         = static_cast<LoggerConfig *>(newConfig);
+		logger         = static_cast<logger::Config *>(newConfig);
 
 		// Process the configuration change
 		Debug::log("Configured with host: {} port: {} level: {}",
@@ -75,7 +75,7 @@ namespace
 		auto config = static_cast<userLed::Config *>(newConfig);
 		if (logger)
 		{
-			if (logger->level == logLevel::Debug)
+			if (logger->level == logger::logLevel::Debug)
 			{
 				Debug::log("User LEDs: {} {} {} {} {} {} {} {}",
 				           config->led0,

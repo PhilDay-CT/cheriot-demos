@@ -38,25 +38,25 @@
 #include <thread.h>
 
 // Expose debugging features unconditionally for this compartment.
-using Debug = ConditionalDebug<true, "Logger Parser">;
+using Debug = ConditionalDebug<true, "System Config Parser">;
 
 #include "config/parser_helper.h"
 
 // Set for Items we are allowed to register a parser for
 #include "common/config_broker/config_broker.h"
 
-#include "config/include/logger.h"
-#define LOGGER_CONFIG "logger"
-DEFINE_PARSER_CONFIG_CAPABILITY(LOGGER_CONFIG, sizeof(logger::Config), 500);
+#include "config/include/system_config.h"
+#define SYSTEM_CONFIG "system"
+DEFINE_PARSER_CONFIG_CAPABILITY(SYSTEM_CONFIG, sizeof(systemConfig::Config), 500);
 
 /**
  * Parse a json string into a LoggerConfig struct.
  */
-int __cheri_callback parse_logger_config(const char *json,
+int __cheri_callback parse_system_config(const char *json,
                                          size_t      jsonLength,
                                          void       *dst)
 {
-	auto        *config = static_cast<logger::Config *>(dst);
+	auto        *config = static_cast<systemConfig::Config *>(dst);
 	JSONStatus_t result;
 
 	auto initial_quota = heap_quota_remaining(MALLOC_CAPABILITY);
@@ -71,10 +71,8 @@ int __cheri_callback parse_logger_config(const char *json,
 
 	// query the individual values and populate the logger config struct
 	bool parsed = true;
-	parsed = parsed && get_string(json, "host.address", config->host.address);
-	parsed =
-	  parsed && get_number<uint16_t>(json, "host.port", &config->host.port);
-	parsed = parsed && get_enum<logger::logLevel>(json, "level", &config->level);
+	parsed = parsed && get_string(json, "group", config->group);
+	parsed = parsed && get_enum<systemConfig::Kind>(json, "kind", &config->kind);
 
 	// Free any heap the parser might have left allocated.
 	// Calling heap_free_all() is quite expensive as it has to walk all
@@ -100,14 +98,14 @@ int __cheri_callback parse_logger_config(const char *json,
  * just to run this which then blocks we expose it as method for
  * the Broker to call when the first item is published.
  */
-int __cheri_compartment("parser_logger") parse_logger_init()
+int __cheri_compartment("parser_system_config") parse_system_config_init()
 {
 	auto res =
-	  set_parser(PARSER_CONFIG_CAPABILITY(LOGGER_CONFIG), parse_logger_config);
+	  set_parser(PARSER_CONFIG_CAPABILITY(SYSTEM_CONFIG), parse_system_config);
 
 	if (res < 0)
 	{
-		Debug::log("Failed to register parser for logger");
+		Debug::log("Failed to register parser for system config");
 	}
 
 	return res;

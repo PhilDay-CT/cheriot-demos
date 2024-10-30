@@ -2,7 +2,7 @@
 -- SPDX-License-Identifier: MIT
 
 
--- Patser for the User LED configuration
+-- Parser for the User LED configuration
 compartment("parser_user_led")
     add_includedirs("../../..")
     add_files("parser.cc")

@@ -19,6 +19,7 @@ using Debug = ConditionalDebug<true, "Parser Init">;
 //
 int __cheri_compartment("parser_rgb_led") parse_rgb_led_init();
 int __cheri_compartment("parser_user_led") parse_user_led_init();
+int __cheri_compartment("parser_system_config") parse_system_config_init();
 
 int __cheri_compartment("mqtt") mqtt_init();
 
@@ -26,7 +27,8 @@ void __cheri_compartment("parser_init") parser_init()
 {
 	Debug::log("initialising parsers");
 		
-	auto res = parse_rgb_led_init();
+	auto res = parse_system_config_init();
+	res      = std::min(res, parse_rgb_led_init());
 	res      = std::min(res, parse_user_led_init());
 
 	if (res == 0)

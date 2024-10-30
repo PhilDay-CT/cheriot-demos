@@ -8,6 +8,8 @@
  * logging service.
  */
 
+namespace logger { 
+
 enum class logLevel
 {
 	Debug = 0,
@@ -22,11 +24,13 @@ struct Host
 	uint16_t port;        // port on host
 };
 
-struct LoggerConfig
+struct Config
 {
 	Host     host;  // Details of the host
 	logLevel level; // required logging level
 };
+
+}; // namespace logger
 
 /**
  * Function which nominally configures the logger
