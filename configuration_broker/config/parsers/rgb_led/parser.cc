@@ -54,11 +54,12 @@ DEFINE_PARSER_CONFIG_CAPABILITY(RGB_LED_CONFIG, sizeof(rgbLed::Config), 1800);
 /**
  * Parse a json string into an RGB LED Config struct.
  */
-int __cheri_callback parse_RGB_LED_config(const char *json,
+int __cheri_callback parse_RGB_LED_config(const void *src,
                                           size_t      jsonLength,
                                           void       *dst)
 {
 	auto        *config = static_cast<rgbLed::Config *>(dst);
+	auto         json =  static_cast<const char *>(src);
 	JSONStatus_t result;
 
 	auto initial_quota = heap_quota_remaining(MALLOC_CAPABILITY);

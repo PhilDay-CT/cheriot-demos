@@ -32,8 +32,8 @@ namespace
 		uint32_t                  minTicks; // Min system ticks between updates
 		uint64_t                  nextUpdate; // Time of next valid update
 		FlagLockPriorityInherited lock; // lock to prevent concurrent changes
-		int                       __cheri_callback (*parser)(const char *json,
-                                       size_t      jsonLength,
+		int                       __cheri_callback (*parser)(const void *src,
+                                       size_t      srcLength,
                                        void       *dst);
 		InternalConfigitem       *next;
 	};
@@ -122,7 +122,7 @@ namespace
  * the capability.
  */
 int __cheri_compartment("config_broker")
-  set_config(SObj sealedCap, const char *json, size_t jsonLength)
+  set_config(SObj sealedCap, const char *src, size_t srcLength)
 {
 	Debug::log(
 	  "thread {} Set config called for {}", thread_id_get(), sealedCap);
@@ -180,15 +180,15 @@ int __cheri_compartment("config_broker")
 	CHERI::Capability woNewData{newData};
 	woNewData.permissions() &= {CHERI::Permission::Store};
 
-	// Create a read only Capability of the JSON string to pass
+	// Create a read only Capability of the source data to pass
 	// to the parser so that it can't capture or change it. This
 	// also clears the Load/Store Capability (MC) permission which
-	// prevents capabilities being embedded in the JSON.
-	CHERI::Capability roJSON{json};
-	roJSON.permissions() &= {CHERI::Permission::Load};
+	// prevents capabilities being embedded in the source data.
+	CHERI::Capability roSrc{src};
+	roSrc.permissions() &= {CHERI::Permission::Load};
 
 	// Call the parser
-	if (c->parser(roJSON, jsonLength, woNewData) != 0)
+	if (c->parser(roSrc, srcLength, woNewData) != 0)
 	{
 		Debug::log("Parser failed for {}", token->Name);
 		free(newData);
@@ -290,7 +290,7 @@ ConfigItem __cheri_compartment("config_broker") get_config(SObj sealedCap)
  */
 int __cheri_compartment("config_broker") set_parser(
   SObj                 sealedCap,
-  __cheri_callback int parser(const char *json, size_t jsonLength, void *dst))
+  __cheri_callback int parser(const void *src, size_t srcLength, void *dst))
 {
 	Debug::log(
 	  "thread {} set parser called with {}", thread_id_get(), sealedCap);

@@ -15,10 +15,12 @@ enum class Kind
 	ConfiguredThings  = 1,
 };
 
+const auto GroupLength = 16;
+
 struct Config
 {
 	Kind kind;
-	char group[16];
+	char group[GroupLength];
 };
 
 } // systemConfig

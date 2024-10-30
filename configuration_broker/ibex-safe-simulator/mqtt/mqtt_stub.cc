@@ -49,6 +49,7 @@
 #include <thread.h>
 
 #include "provider.h"
+#include "../../config/include/logger.h"
 
 // Expose debugging features unconditionally for this compartment.
 using Debug = ConditionalDebug<true, "MQTT">;
@@ -77,28 +78,6 @@ namespace
 	   "{\"led0\":{\"red\":0,   \"green\":86,  \"blue\":164},"
 	   " \"led1\":{\"red\":255, \"green\":200, \"blue\":200}}"},
 
-	  // Valid Logger config - log level Info
-	  {"Valid Logger config (Info)",
-	   0,
-	   "logger",
-	   "{\"host\": "
-	   "{\"address\":\"100.101.102.103\",\"port\":666},\"level\":\"info\"}"},
-
-	  // Valid logger config - log level Warn
-	  {"Valid Logger config (Warn)",
-	   0,
-	   "logger",
-	   "{\"host\": "
-	   "{\"address\":\"100.101.102.103\",\"port\":666},\"level\":\"warn\"}"},
-
-	  // Invalid Logger config - bad port value
-	  {"Invalid Logger config (bad port)",
-	   -EINVAL,
-	   "logger",
-	   "{\"host\": "
-	   "{\"address\":\"100.101.102.103\",\"port\":\"xxx\"},\"level\":"
-	   "\"debug\"}"},
-
 	  // Valid User LED config
 	  {"Valid User LED config",
 	   0,
@@ -106,8 +85,15 @@ namespace
 	   "{\"led0\":\"on\",\"led1\":\"off\",\"led2\":\"ON\",\"led3\":\"OFF\","
 	   " \"led4\":\"On\",\"led5\":\"Off\",\"led6\":\"on\",\"led7\":\"off\"}"},
 
-	  // Invalid Logger config - invalid Json
-	  {"Invalid Logger config (bad JSON)", -EINVAL, "logger", "{\"x\":"},
+	  // Invalid RGB LED config - invalid Json
+	  {"InvalidRBG LED config (bad JSON)", -EINVAL, "rgbled", "{\"x\":"},
+
+	  // Valid User LED config
+	  {"Valid User LED config",
+	   0,
+	   "userled",
+	   "{\"led0\":\"OFF\",\"led1\":\"ON\",\"led2\":\"off\",\"led3\":\"on\","
+	   " \"led4\":\"Off\",\"led5\":\"On\",\"led6\":\"off\",\"led7\":\"on\"}"},
 
 	  // Valid RGB LED config
 	  {"Valid RGB LED config",
@@ -130,22 +116,6 @@ namespace
 	   "{\"led0\":{\"red\":0,  \"green\":286,\"blue\":400},"
 	   " \"led1\":{\"red\":255,\"green\":200,\"blue\":200}}"},
 
-	  // Invalid Logger config - invalid log level
-	  {"Invalid Logger config (bad level)",
-	   -EINVAL,
-	   "logger",
-	   "{\"host\": "
-	   "{\"address\":\"100.101.102.103\",\"port\":666},\"level\":\"thing\"}"},
-
-	  // Invalid Logger config - oversized host address which will trigger a
-	  // bounds
-	  // violation
-	  {"Invalid Logger config (overflow)",
-	   -EINVAL,
-	   "logger",
-	   "{\"host\": {\"address\":\"buffer overflow attack via a very long "
-	   "address\",\"port\":666},\"level\":\"info\"}"},
-
 	};
 
 } // namespace
@@ -159,26 +129,61 @@ namespace
  */
 void __cheri_compartment("mqtt") mqtt_init()
 {
+	logger::Config loggerConfig = {
+		{
+			"100.101.102.103",
+			666
+		},
+		logger::logLevel::Warn 
+	};
+
+	Debug::log("-------- Logger (Warn) --------");
+	auto res =
+		  updateConfig("logger", 6, &loggerConfig, sizeof(loggerConfig));
+	Debug::Assert(res == 0, "Unexpected result {}", res);
+	
+	// Give the consumers a chance to run
+	Timeout t1{MS_TO_TICKS(500)};
+	thread_sleep(&t1, ThreadSleepNoEarlyWake);
+	
+	Debug::log("-------- Logger (Debug) --------");
+	loggerConfig.level = logger::logLevel::Debug;
+	res =
+		  updateConfig("logger", 6, &loggerConfig, sizeof(loggerConfig));
+	Debug::Assert(res == 0, "Unexpected result {}", res);
+	
+	// Give the consumers a chance to run
+	Timeout t2{MS_TO_TICKS(500)};
+	thread_sleep(&t2, ThreadSleepNoEarlyWake);
+	
+	Debug::log("-------- Logger (Invalid address and port) --------");
+	strcpy(loggerConfig.host.address, "invalidAddress");
+	loggerConfig.host.port = 0;
+	res =
+		  updateConfig("logger", 6, &loggerConfig, sizeof(loggerConfig));
+	Debug::Assert(res == -EINVAL, "Unexpected result {}", res);
+	
+	
 	for (auto &m : Messages)
 	{
 		Debug::log("-------- {} --------", m.description);
 		Debug::log("thread {} Send {} {}", thread_id_get(), m.topic, m.json);
-		auto res =
+		res =
 		  updateConfig(m.topic, strlen(m.topic), m.json, strlen(m.json));
 		Debug::Assert(res == m.expected, "Unexpected result {}", res);
 
 		// Give the consumers a chance to run
-		Timeout t1{MS_TO_TICKS(500)};
-		thread_sleep(&t1, ThreadSleepNoEarlyWake);
+		Timeout t3{MS_TO_TICKS(500)};
+		thread_sleep(&t3, ThreadSleepNoEarlyWake);
 	}
 
-	// try to update the RGB LED too quickly
-	auto m = Messages[0];
-	Debug::log("------- Update RGB LED --------");
-	auto res = updateConfig(m.topic, strlen(m.topic), m.json, strlen(m.json));
+	// try to update the User LED too quickly
+	auto m = Messages[1];
+	Debug::log("------- Update USer LED --------");
+	res = updateConfig(m.topic, strlen(m.topic), m.json, strlen(m.json));
 	Debug::Assert(res == 0, "Unexpected result {}", res);
 
-	Debug::log("------- Update RGB LED too quickly --------");
+	Debug::log("------- Update User LED too quickly --------");
 	res = updateConfig(m.topic, strlen(m.topic), m.json, strlen(m.json));
 	Debug::Assert(res == -EBUSY, "Unexpected result {}", res);
 

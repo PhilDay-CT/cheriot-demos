@@ -136,4 +136,4 @@ ConfigItem __cheri_compartment("config_broker")
  */
 int __cheri_compartment("config_broker") set_parser(
   SObj                 configValidateCapability,
-  __cheri_callback int parse(const char *json, size_t jsonLength, void *dst));
+  __cheri_callback int parse(const void *src, size_t srcLength, void *dst));

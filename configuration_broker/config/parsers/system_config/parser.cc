@@ -13,34 +13,18 @@
  *     the collection of helper functions in parser_helper.h
  */
 
-/**
- * Normally for code designed to run in a sandbox compartment
- * we would block heap operations by including the following
- * definitions:
- *
- * #define CHERIOT_NO_AMBIENT_MALLOC
- * #define CHERIOT_NO_NEW_DELETE
- *
- * However our JSON parser (and specifically magic_emum) relies on new()
- * so instead we give it a small heap quota and call heap_free_all()
- * at the end of each parser callback to clean up if there is any leakage,
- * That still leaves a small residual risk that a poorly written parser
- * could affect subsequent calls, but the parser for each item type runs
- * in it's own compartment to avoid any cross-contamination.
- *
- */
-#define MALLOC_QUOTA 200
+#define CHERIOT_NO_AMBIENT_MALLOC
+#define CHERIOT_NO_NEW_DELETE
 
 #include <compartment.h>
 #include <cstdlib>
+#include <ctype.h>
 #include <debug.hh>
 #include <string.h>
 #include <thread.h>
 
 // Expose debugging features unconditionally for this compartment.
 using Debug = ConditionalDebug<true, "System Config Parser">;
-
-#include "config/parser_helper.h"
 
 // Set for Items we are allowed to register a parser for
 #include "common/config_broker/config_broker.h"
@@ -49,41 +33,57 @@ using Debug = ConditionalDebug<true, "System Config Parser">;
 #define SYSTEM_CONFIG "system"
 DEFINE_PARSER_CONFIG_CAPABILITY(SYSTEM_CONFIG, sizeof(systemConfig::Config), 500);
 
+namespace {
+
+bool isalnum(char c) {
+	return ((c >= 'a' && c <= 'z') ||
+	    (c >= 'A' && c <= 'Z') ||
+		(c >= '0' && c <= '9')
+	);
+}
+
+} 
+
+
 /**
  * Parse a json string into a LoggerConfig struct.
  */
-int __cheri_callback parse_system_config(const char *json,
-                                         size_t      jsonLength,
+int __cheri_callback parse_system_config(const void *src,
+                                         size_t      srcSize,
                                          void       *dst)
 {
-	auto        *config = static_cast<systemConfig::Config *>(dst);
-	JSONStatus_t result;
+	auto *config = static_cast<systemConfig::Config *>(dst);
+	auto *srcConfig = static_cast<const systemConfig::Config *>(src);
+	bool parsed = true;
 
-	auto initial_quota = heap_quota_remaining(MALLOC_CAPABILITY);
+	// Check the kind is in range
+	switch (srcConfig->kind) {
+		case systemConfig::Kind::lowRISC:
+		case systemConfig::Kind::ConfiguredThings:
+			config->kind = srcConfig->kind;
+			break;
 
-	// Check we have valid JSON
-	result = jsonParser::validate(json, jsonLength);
-	if (result != JSONSuccess)
-	{
-		Debug::log("thread {} Invalid JSON {}", thread_id_get(), json);
-		return -1;
+		default:	
+			Debug::log("thread {} Invalid Kind {}", thread_id_get(), srcConfig->kind);
+			parsed = false;
+			break;
 	}
 
-	// query the individual values and populate the logger config struct
-	bool parsed = true;
-	parsed = parsed && get_string(json, "group", config->group);
-	parsed = parsed && get_enum<systemConfig::Kind>(json, "kind", &config->kind);
+	// Check we have a valid group name
+	for (auto i=0; i< sizeof(config->group); i++) {
+		auto c = srcConfig->group[i];
 
-	// Free any heap the parser might have left allocated.
-	// Calling heap_free_all() is quite expensive as it has to walk all
-	// the objects in the heap, so only call it if the heap usage has
-	// increased, which only requires a call to the allocator to read
-	// the remaining quota from the capability.
-	auto heap_used = initial_quota - heap_quota_remaining(MALLOC_CAPABILITY);
-	if (heap_used > 0)
-	{
-		auto heap_freed = heap_free_all(MALLOC_CAPABILITY);
-		Debug::log("Freed {} from heap", heap_freed);
+		if (c == 0) {
+			config->group[i] = c;
+			break;
+		}
+		if (!isalnum(c)) {
+			Debug::log("Invalid character {} in group", c);
+			parsed = false;
+			break; 
+		} else {
+			config->group[i] = c;
+		}
 	}
 
 	return (parsed) ? 0 : -1;
