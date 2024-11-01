@@ -60,6 +60,7 @@ namespace ConfigConsumer
 			// find out which value changed
 			for (auto i = 0; i < numOfItems; i++)
 			{
+				Debug::log("Item {} of {} changed", i, numOfItems);
 				if (events[i].value == 1)
 				{
 					auto c    = &configItems[i];
@@ -103,6 +104,7 @@ namespace ConfigConsumer
 					}
 
 					// Call the handler for this item
+					Debug::log("Calling handler for {}", item.name);
 					if (c->handler(item.data) != 0)
 					{
 						Debug::log("thread {} handler failed for {} {}",
@@ -110,6 +112,7 @@ namespace ConfigConsumer
 						           item.name,
 						           item.data);
 					}
+					Debug::log("After handler for {}", item.name);
 				}
 			}
 
@@ -122,6 +125,7 @@ namespace ConfigConsumer
 			}
 
 			// Wait for a version to change
+			Debug::log("Waiting for new events");
 			Timeout t{MS_TO_TICKS(10000)};
 			if (multiwaiter_wait(&t, mw, events, numOfItems) != 0)
 			{

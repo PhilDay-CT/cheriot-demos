@@ -28,21 +28,6 @@ using Debug = ConditionalDebug<true, "LCD Config">;
 
 namespace
 {
-	static systemConfig::Config *currentConfig;
-	
-
-	/**
-	 * Put a logo on the LCD
-	 */
-	void setLogo(SonataLcd lcd) {
-	
-		CHERI::with_interrupts_disabled([&]() {		
-			auto screen   = Rect::from_point_and_size(Point::ORIGIN, lcd.resolution());
-			auto logoRect = screen.centered_subrect({105, 80});
-			lcd.draw_image_rgb565(logoRect, CTLogo105x80);
-		});
-	} 
-
 	/**
 	 * Handle updates to the System configuration
 	 */

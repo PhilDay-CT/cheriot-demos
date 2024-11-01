@@ -61,9 +61,7 @@ firmware("config-broker-sonata")
     add_deps("parser_rgb_led")
     add_deps("parser_user_led")
     
-    add_deps("user_led")
-    add_deps("rgb_led")
-    add_deps("lcd")
+    add_deps("consumers")
     
     on_load(function(target)
         target:values_set("board", "$(board)")
@@ -73,36 +71,17 @@ firmware("config-broker-sonata")
                 -- Starts in the parser_init compartment
                 -- and then and loops in system_config
                 compartment = "parser_init",
-                priority = 1,
+                priority = 4,
                 entry_point = "parser_init",
                 stack_size = 0x500,
                 trusted_stack_frames = 4
             },
             {
-                -- Thread to consume rgb_led values.
-                -- Starts and loops in rgb_led
-                compartment = "rgb_led",
+                -- Thread to consume config values
+                compartment = "consumers",
                 priority = 2,
                 entry_point = "init",
-                stack_size = 0x500,
-                trusted_stack_frames = 4
-            },
-            {
-                -- Thread to consume user_led values.
-                -- Starts and loops in user_led
-                compartment = "user_led",
-                priority = 2,
-                entry_point = "init",
-                stack_size = 0x500,
-                trusted_stack_frames = 4
-            },
-            {
-                -- Thread to consume lcd values.
-                -- Starts and loops in lcd
-                compartment = "lcd",
-                priority = 2,
-                entry_point = "init",
-                stack_size = 0x500,
+                stack_size = 0x600,
                 trusted_stack_frames = 4
             },
             {

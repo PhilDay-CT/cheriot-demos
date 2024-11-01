@@ -28,31 +28,34 @@ Providing a generic broker and expressing the trust model via its interfaces mak
 # Table of Contents
 - [Safe Configuration Management](#safe-configuration-management)
 - [Table of Contents](#table-of-contents)
-  - [Overview](#overview)
-    - [Interactions and Trust Model](#interactions-and-trust-model)
-      - [Parsers](#parsers)
-        - [Integrity](#integrity)
-        - [Confidentiality](#confidentiality)
-        - [Availability](#availability)
-      - [Providers](#providers)
-        - [Confidentiality](#confidentiality-1)
-        - [Integrity](#integrity-1)
-        - [Availability](#availability-1)
-      - [Consumers](#consumers)
-        - [Confidentiality](#confidentiality-2)
-        - [Integrity](#integrity-2)
-        - [Availability](#availability-2)
-  - [Initalisation](#initalisation)
-  - [Code Strcuture](#code-strcuture)
-  - [IBEX Simulator](#ibex-simulator)
-    - [Configuration Data](#configuration-data)
-      - [RGB LEDs](#rgb-leds)
-      - [User LEDs](#user-leds)
-      - [Logger](#logger)
-    - [Threads](#threads)
+- [Overview](#overview)
+  - [Interactions and Trust Model](#interactions-and-trust-model)
+    - [Parsers](#parsers)
+      - [Integrity](#integrity)
+      - [Confidentiality](#confidentiality)
+      - [Availability](#availability)
+    - [Providers](#providers)
+      - [Confidentiality](#confidentiality-1)
+      - [Integrity](#integrity-1)
+      - [Availability](#availability-1)
+    - [Consumers](#consumers)
+      - [Confidentiality](#confidentiality-2)
+      - [Integrity](#integrity-2)
+      - [Availability](#availability-2)
+- [Initalisation](#initalisation)
+- [Repository Structure](#repository-structure)
+- [IBEX Simulator](#ibex-simulator)
+  - [Configuration Data](#configuration-data)
+    - [RGB LEDs](#rgb-leds)
+    - [User LEDs](#user-leds)
+    - [Logger](#logger)
+  - [Threads](#threads)
+- [Build Instructions (Dev container)](#build-instructions-dev-container)
+  - [Ibex](#ibex)
+  - [Sonata](#sonata)
 
 
-## Overview
+# Overview
 
 Each item of configuration data has a name, a value, and a version.
 New values are supplied as serialised JSON and parsed into a corresponding data structure. 
@@ -96,10 +99,10 @@ The Provider is in effect simply an authorised mapping between the topics and co
 The Parsers and Consumers contain code which is specific to each item.
 The Broker is agnostic to the details of configuration items, and has no prior knowledge of which items exist.
 
-### Interactions and Trust Model
+## Interactions and Trust Model
 Because the Broker provides an abstraction between Providers, Consumers and Parsers all of the interactions can be described in terms of their interactions with the Broker rather than each other.
 
-#### Parsers
+### Parsers
 The parsers have the key role of converting untrusted data received from the network into verified and trusted configuration values.
 In traditional systems parsers are vulnerable to a range of attacks such as injection and buffer overflow.
 Using CHERIoT each parser runs as a stateless method (using heap controls) in its own a sandbox compartment which ensures that any issues are contained to failing only the current parse operation.
@@ -120,21 +123,21 @@ Parsers that can run without any heap interaction could be co-located in the sam
 In the demo we use a combination of a CHERIoT library wrapper to coreJSON from FreeRTOS and magic_emun, which requires a small amount of heap manipulation.
 Running each parser in its own sandbox compartment with a small heap quota prevents any risk of interaction between the different configuration item types even if there is some persistent heap based attack on the parser.  
 
-##### Integrity
+#### Integrity
 The Broker trusts that the Parser will correctly populate the object, but this can be established by code inspection & testing.
 Because the Parser can only be invoked by the Broker and is stateless it's correct operation can not be compromised. 
 
 The Parser has no need for trust in the Broker; if it is passed the wrong size buffer the operation will simply fail, or result in a partly populated object.
 
-##### Confidentiality
+#### Confidentiality
 The Broker ensures that Parser can not capture the capabilities passed as parameters.
 
 The Parser is not allowed to persist state in the heap. 
 
-##### Availability
+#### Availability
 The Broker trusts that the Parser will not block only to the extent that it provides this guarantee to the Provider;  The Broker itself is still able to serve other configuration items.
 
-#### Providers
+### Providers
 Providers have one or more WRITE_CONFIG_CAPABILTY(s) that define the name of each item they are allowed to update. They request the broker to update the value of an item by passing it
 * The sealed capability granting permission to update the item.
 * A read-only string of serialised JSON.
@@ -143,11 +146,11 @@ Assuming the capability is valid, the Broker will allocate the required space fr
 
 If the parse is successful the Broker will notify any consumers by updating the version.
 
-##### Confidentiality
+#### Confidentiality
 The Publisher is trusting the Broker will only make the data available to compartments that have the corresponding sealed read capability.
 This can be verified by code inspection and auditing the static sealed capabilities.
 
-##### Integrity
+#### Integrity
 Only a Provider with the corresponding sealed capability can request an update. 
 
 The data object is created from a read only JSON string, and stored in heap space allocated by the Broker.
@@ -155,7 +158,7 @@ There is no path for the publisher to affect the integrity of the data after it 
 
 The Broker only maintains a read only pointer to the parsed data, so neither it nor a consumer can mutate it.
 
-##### Availability
+#### Availability
 The Provider can not make the Broker consume more of its heap that the 2x the size defined in the corresponding sealed capability of the Parser (current version + new version).
 
 The Provider can not make the Broker attempt to parse it's data more often that the minimum interval defined in the corresponding sealed capability of the Parser.
@@ -163,7 +166,7 @@ The Provider can not make the Broker attempt to parse it's data more often that 
 The Provider is trusting the Broker, and indirectly the Parser, not to block its thread.
 
 
-#### Consumers
+### Consumers
 Consumers have one or more READ_CONFIG_CAPABILITY(s) that define which items they are allowed to receive.
 
 Consumers can request the current value at any time by passing their sealed capability to the Broker.
@@ -180,15 +183,15 @@ Consumers must assert their own claims and fast_claims to keep the value availab
 
 As with the Provider the extent to which the Broker trusts a Consumer is encapsulated in the sealed capability, so it is only "trusting" something which can be audited at build time.
 
-##### Confidentiality
+#### Confidentiality
 Only a Consumer with the sealed capability can request an item.
 
-##### Integrity
+#### Integrity
 The consumer is only given a read capability to the item, so it can not mutate it.
 
 The Broker will only ever give the Consumer values that have been successfully parsed.
 
-##### Availability
+#### Availability
 The Consumer is trusting that the Broker wil notify it when new versions are available. 
 
 The Consumer can not affect the Brokers heap quota; if the Consumer fails to make or release a claim it only affects itself.
@@ -196,7 +199,7 @@ The Consumer can not affect the Brokers heap quota; if the Consumer fails to mak
 The Consumer is trusting that Broker will not block it's thread when it reads a value.
 It has control over when it's thread waits on the futex for a new version, and for how long to wait. 
 
-## Initalisation
+# Initalisation
 A key aspect of the design is to be able to add new configuration items just by creating the associated sealed capabilities and assigning them to the appropriate compartments.
 To support this approach each parser must register with the broker.
 This is turn creates an initialisation issue as the parsers do not have their own thread (the run on the thread that want's to set a vew value), and Cheriot has no general init mechanism.
@@ -204,7 +207,7 @@ Ideally we would restrict the scope of who can call a parser to just the config-
 Instead we add a build-specific parser-init compartment, that is used as the stating point for the provide thread.
 This calls each of the parsers before transfering into the mqtt thread, which allows us to still assert limits around access to the parsers. 
 
-## Code Strcuture
+# Repository Structure
 The demo can be built for two targets.
 * ibex-safe-simulator provides a self contained demo that can run in the dev container and shows the principles of the broker in operation.  
 * sonata provides a deployment for a sonata board using the user and RGB LEDs with data provided by the MQTT network stack.
@@ -250,14 +253,14 @@ _/config could be considered platform specific, but in this example some data ty
 ```
 
 
-## IBEX Simulator
+# IBEX Simulator
 
-### Configuration Data
+## Configuration Data
 
 The demo uses three configuration values; two based on Sonata board and a third more contrived for the demo.
 The values are mix of strings, numbers, and enumerations.  
 
-#### RGB LEDs
+### RGB LEDs
 Sets the colour of the two RGB LEDs
 ```json
 {
@@ -267,7 +270,7 @@ Sets the colour of the two RGB LEDs
 ```
 Values must be 0-255
 
-#### User LEDs
+### User LEDs
 Sets the state of the eight User LEDs 
 ```json
 {
@@ -283,7 +286,7 @@ Sets the state of the eight User LEDs
 ```
 Values are not case sensitive.
 
-#### Logger
+### Logger
 A contrived example to include a string (to show buffer overflow handling) and which has multiple consumers.
 To show an alterative parser this expects the data to be supplied in binary rather than JSON. 
 The C++ defintion of configuration structure is 
@@ -309,7 +312,7 @@ struct Config
 };
 ```
 
-### Threads
+## Threads
 A thread which starts in the MQTT stub provides a sequence of valid and invalid configuration values from the corresponding topics. 
 
 There are two Consumers in the demo, each implemented as separate compartments.
@@ -405,5 +408,21 @@ sequenceDiagram
 The demo uses the "ibex-safe-simulator" board as its target, since this provides a realtime clock.
 This allows the Provider to sleep between messages giving the Consumers a chance to run.    
 
+# Build Instructions (Dev container)
 
+## Ibex
+```
+cd configuration_broker/ibex-safe-simulator
+xmake config --sdk=/cheriot-tools -P .
+xmake
+xmake run
+```
 
+## Sonata
+The network stack takes a lot of extra resources, so build without IPv6 support.
+```
+cd configuration_broker/sonata
+xmake
+xmake config --IPv6=n --sdk=/cheriot-tools/ -P .
+xmake run
+```
