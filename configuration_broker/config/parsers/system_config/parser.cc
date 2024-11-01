@@ -35,10 +35,11 @@ DEFINE_PARSER_CONFIG_CAPABILITY(SYSTEM_CONFIG, sizeof(systemConfig::Config), 500
 
 namespace {
 
-bool isalnum(char c) {
+bool isValidChar(char c) {
 	return ((c >= 'a' && c <= 'z') ||
 	    (c >= 'A' && c <= 'Z') ||
-		(c >= '0' && c <= '9')
+		(c >= '0' && c <= '9') ||
+		(c == '-' ) || (c == '_')
 	);
 }
 
@@ -56,19 +57,6 @@ int __cheri_callback parse_system_config(const void *src,
 	auto *srcConfig = static_cast<const systemConfig::Config *>(src);
 	bool parsed = true;
 
-	// Check the kind is in range
-	switch (srcConfig->kind) {
-		case systemConfig::Kind::lowRISC:
-		case systemConfig::Kind::ConfiguredThings:
-			config->kind = srcConfig->kind;
-			break;
-
-		default:	
-			Debug::log("thread {} Invalid Kind {}", thread_id_get(), srcConfig->kind);
-			parsed = false;
-			break;
-	}
-
 	// Check we have a valid id name
 	for (auto i=0; i< sizeof(config->id); i++) {
 		auto c = srcConfig->id[i];
@@ -77,13 +65,18 @@ int __cheri_callback parse_system_config(const void *src,
 			config->id[i] = c;
 			break;
 		}
-		if (!isalnum(c)) {
+		if (!isValidChar(c)) {
 			Debug::log("Invalid character {} in group", c);
 			parsed = false;
 			break; 
 		} else {
 			config->id[i] = c;
 		}
+	}
+
+	// Copy the switch settings
+	for (auto i=0; i< sizeof(config->switches); i++) {
+		config->switches[i] = srcConfig->switches[i];
 	}
 
 	return (parsed) ? 0 : -1;

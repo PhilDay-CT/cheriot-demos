@@ -14,7 +14,7 @@ compartment("user_led")
 compartment("lcd")
     add_includedirs("../..")
     add_files("lcd.cc")
-    add_deps("cxxrt")
+    add_deps("cxxrt", "stdio")
     -- LCD drivers
     add_files("../third_party/display_drivers/core/lcd_base.c")
     add_files("../third_party/display_drivers/core/lucida_console_12pt.c")

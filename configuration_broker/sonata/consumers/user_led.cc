@@ -4,8 +4,6 @@
 #include <compartment.h>
 #include <cstdlib>
 #include <debug.hh>
-#include <fail-simulator-on-error.h>
-#include <multiwaiter.h>
 #include <thread.h>
 #include <token.h>
 

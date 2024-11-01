@@ -4,23 +4,17 @@
 #include <algorithm>
 #include <stdlib.h>
 
-// Mocked example of configuration data for a controller
-// with two RGB LEDs (such as on the Sonata Board)
+// System configurartion data, such as
+// id and current switch settings
 
 namespace systemConfig {
-
-enum class Kind
-{
-	lowRISC = 0,
-	ConfiguredThings  = 1,
-};
 
 const auto IdLength = 16;
 
 struct Config
 {
-	Kind kind;
 	char id[IdLength];
+	bool switches[8];
 };
 
 } // systemConfig

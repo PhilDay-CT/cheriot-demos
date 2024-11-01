@@ -15,8 +15,8 @@ option("board")
     set_default("sonata")
 
 -- network stack
---includes(path.join(sdkdir, "lib"))
---includes("../../network-stack/lib")
+includes(path.join(sdkdir, "lib"))
+includes("../../network-stack/lib")
 
 -- Common libraries and compartments
 includes("../common/json_parser")
@@ -27,8 +27,7 @@ includes("../common/config_consumer")
 includes("system_config")
 
 -- MQTT Client to provide configurtaion
---includes("mqtt")
-includes("mqtt_stub")
+includes("mqtt")
 
 -- Parser init compartment
 compartment("parser_init")
@@ -84,7 +83,7 @@ firmware("config-broker-sonata")
                 compartment = "rgb_led",
                 priority = 2,
                 entry_point = "init",
-                stack_size = 0x500,
+                stack_size = 0x200,
                 trusted_stack_frames = 4
             },
             {
@@ -93,7 +92,7 @@ firmware("config-broker-sonata")
                 compartment = "user_led",
                 priority = 2,
                 entry_point = "init",
-                stack_size = 0x500,
+                stack_size = 0x200,
                 trusted_stack_frames = 4
             },
             {
@@ -102,7 +101,7 @@ firmware("config-broker-sonata")
                 compartment = "lcd",
                 priority = 2,
                 entry_point = "init",
-                stack_size = 0x500,
+                stack_size = 0x200,
                 trusted_stack_frames = 4
             },
             {
@@ -112,6 +111,25 @@ firmware("config-broker-sonata")
                 entry_point = "mqtt_init",
                 stack_size = 8160,
                 trusted_stack_frames = 8
+            },
+            {
+                -- TCP/IP stack thread.
+                compartment = "TCPIP",
+                priority = 3,
+                entry_point = "ip_thread_entry",
+                stack_size = 0x1000,
+                trusted_stack_frames = 5
+            },
+            {
+                -- Firewall thread, handles incoming packets as they arrive.
+                compartment = "Firewall",
+                -- Higher priority, this will be back-pressured by the message
+                -- queue if the network stack can't keep up, but we want
+                -- packets to arrive immediately.
+                priority = 4,
+                entry_point = "ethernet_run_driver",
+                stack_size = 0x1000,
+                trusted_stack_frames = 5
             }
         }, {expand = false})
     end)

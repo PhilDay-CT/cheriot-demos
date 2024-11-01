@@ -5,7 +5,6 @@
 #include <cstdint>
 #include <cstdlib>
 #include <debug.hh>
-#include <fail-simulator-on-error.h>
 #include <thread.h>
 #include <token.h>
 

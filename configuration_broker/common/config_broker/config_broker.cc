@@ -122,7 +122,7 @@ namespace
  * the capability.
  */
 int __cheri_compartment("config_broker")
-  set_config(SObj sealedCap, const char *src, size_t srcLength)
+  set_config(SObj sealedCap, const void *src, size_t srcLength)
 {
 	Debug::log(
 	  "thread {} Set config called for {}", thread_id_get(), sealedCap);
