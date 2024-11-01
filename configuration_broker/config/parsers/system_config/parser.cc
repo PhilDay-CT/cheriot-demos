@@ -69,12 +69,12 @@ int __cheri_callback parse_system_config(const void *src,
 			break;
 	}
 
-	// Check we have a valid group name
-	for (auto i=0; i< sizeof(config->group); i++) {
-		auto c = srcConfig->group[i];
+	// Check we have a valid id name
+	for (auto i=0; i< sizeof(config->id); i++) {
+		auto c = srcConfig->id[i];
 
 		if (c == 0) {
-			config->group[i] = c;
+			config->id[i] = c;
 			break;
 		}
 		if (!isalnum(c)) {
@@ -82,7 +82,7 @@ int __cheri_callback parse_system_config(const void *src,
 			parsed = false;
 			break; 
 		} else {
-			config->group[i] = c;
+			config->id[i] = c;
 		}
 	}
 

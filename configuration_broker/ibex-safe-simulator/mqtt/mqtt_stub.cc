@@ -49,7 +49,6 @@
 #include <thread.h>
 
 #include "provider.h"
-#include "../../config/include/logger.h"
 
 // Expose debugging features unconditionally for this compartment.
 using Debug = ConditionalDebug<true, "MQTT">;
@@ -66,6 +65,17 @@ namespace
 		int         expected;
 		const char *topic;
 		const char *json;
+	};
+
+	/**
+	 * Define a data struct for the Logger conf, send
+	 * as a byte format
+	 */
+	struct Logger
+	{
+		char     address[16];
+		uint16_t port;
+		int      level;
 	};
 
 	// Set of messages to publish.
@@ -129,12 +139,10 @@ namespace
  */
 void __cheri_compartment("mqtt") mqtt_init()
 {
-	logger::Config loggerConfig = {
-		{
-			"100.101.102.103",
-			666
-		},
-		logger::logLevel::Warn 
+	Logger loggerConfig = {
+		"100.101.102.103",
+		666,
+		2
 	};
 
 	Debug::log("-------- Logger (Warn) --------");
@@ -147,7 +155,7 @@ void __cheri_compartment("mqtt") mqtt_init()
 	thread_sleep(&t1, ThreadSleepNoEarlyWake);
 	
 	Debug::log("-------- Logger (Debug) --------");
-	loggerConfig.level = logger::logLevel::Debug;
+	loggerConfig.level = 0;
 	res =
 		  updateConfig("logger", 6, &loggerConfig, sizeof(loggerConfig));
 	Debug::Assert(res == 0, "Unexpected result {}", res);
@@ -157,24 +165,36 @@ void __cheri_compartment("mqtt") mqtt_init()
 	thread_sleep(&t2, ThreadSleepNoEarlyWake);
 	
 	Debug::log("-------- Logger (Invalid address and port) --------");
-	strcpy(loggerConfig.host.address, "invalidAddress");
-	loggerConfig.host.port = 0;
+	strcpy(loggerConfig.address, "invalidAddress");
+	loggerConfig.port = 0;
 	res =
 		  updateConfig("logger", 6, &loggerConfig, sizeof(loggerConfig));
 	Debug::Assert(res == -EINVAL, "Unexpected result {}", res);
 	
-	
+	Timeout t3{MS_TO_TICKS(500)};
+	thread_sleep(&t3, ThreadSleepNoEarlyWake);
+	Debug::log("-------- Logger (Bad data) --------");
+	char buffer[2];
+	res =
+		  updateConfig("logger", 6, &buffer, sizeof(loggerConfig));
+	Debug::Assert(res == -EINVAL, "Unexpected result {}", res);
+
 	for (auto &m : Messages)
 	{
 		Debug::log("-------- {} --------", m.description);
 		Debug::log("thread {} Send {} {}", thread_id_get(), m.topic, m.json);
+		// Match the capabilities set by the MQTT shim
+		CHERI::Capability topic{m.topic};
+		CHERI::Capability json{m.json};
+		topic.permissions() &= CHERI::Permission::Load;
+		json.permissions() &= CHERI::Permission::Load;
 		res =
-		  updateConfig(m.topic, strlen(m.topic), m.json, strlen(m.json));
+		  updateConfig(topic, strlen(m.topic), json, strlen(m.json));
 		Debug::Assert(res == m.expected, "Unexpected result {}", res);
 
 		// Give the consumers a chance to run
-		Timeout t3{MS_TO_TICKS(500)};
-		thread_sleep(&t3, ThreadSleepNoEarlyWake);
+		Timeout t4{MS_TO_TICKS(500)};
+		thread_sleep(&t4, ThreadSleepNoEarlyWake);
 	}
 
 	// try to update the User LED too quickly

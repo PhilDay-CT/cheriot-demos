@@ -25,6 +25,33 @@ All are example of how to develop such components using CHERIoT features such as
 
 Providing a generic broker and expressing the trust model via its interfaces makes it possible to add support for new configuration items without having to re-evaluate the trust model each time. 
 
+# Table of Contents
+- [Safe Configuration Management](#safe-configuration-management)
+- [Table of Contents](#table-of-contents)
+  - [Overview](#overview)
+    - [Interactions and Trust Model](#interactions-and-trust-model)
+      - [Parsers](#parsers)
+        - [Integrity](#integrity)
+        - [Confidentiality](#confidentiality)
+        - [Availability](#availability)
+      - [Providers](#providers)
+        - [Confidentiality](#confidentiality-1)
+        - [Integrity](#integrity-1)
+        - [Availability](#availability-1)
+      - [Consumers](#consumers)
+        - [Confidentiality](#confidentiality-2)
+        - [Integrity](#integrity-2)
+        - [Availability](#availability-2)
+  - [Initalisation](#initalisation)
+  - [Code Strcuture](#code-strcuture)
+  - [IBEX Simulator](#ibex-simulator)
+    - [Configuration Data](#configuration-data)
+      - [RGB LEDs](#rgb-leds)
+      - [User LEDs](#user-leds)
+      - [Logger](#logger)
+    - [Threads](#threads)
+
+
 ## Overview
 
 Each item of configuration data has a name, a value, and a version.
@@ -225,10 +252,12 @@ _/config could be considered platform specific, but in this example some data ty
 
 ## IBEX Simulator
 
+### Configuration Data
+
 The demo uses three configuration values; two based on Sonata board and a third more contrived for the demo.
 The values are mix of strings, numbers, and enumerations.  
 
-### RGB LEDs
+#### RGB LEDs
 Sets the colour of the two RGB LEDs
 ```json
 {
@@ -238,7 +267,7 @@ Sets the colour of the two RGB LEDs
 ```
 Values must be 0-255
 
-### User LEDs
+#### User LEDs
 Sets the state of the eight User LEDs 
 ```json
 {
@@ -254,18 +283,33 @@ Sets the state of the eight User LEDs
 ```
 Values are not case sensitive.
 
-### Logger
+#### Logger
 A contrived example to include a string (to show buffer overflow handling) and which has multiple consumers.
-```json
+To show an alterative parser this expects the data to be supplied in binary rather than JSON. 
+The C++ defintion of configuration structure is 
+```c++
+enum class logLevel
 {
-  "host": {
-    "address": "10.100.0.30",
-    "port": 514
-   },
-   "level": "info"
-}
+	Debug = 0,
+	Info  = 1,
+	Warn  = 2,
+	Error = 3
+};
+
+struct Host
+{
+	char     address[16]; // ipv4 address of host
+	uint16_t port;        // port on host
+};
+
+struct Config
+{
+	Host     host;  // Details of the host
+	logLevel level; // required logging level
+};
 ```
 
+### Threads
 A thread which starts in the MQTT stub provides a sequence of valid and invalid configuration values from the corresponding topics. 
 
 There are two Consumers in the demo, each implemented as separate compartments.
