@@ -18,8 +18,7 @@
 using namespace CHERI;
 
 /// Debugging can be enable with "xmake --config --debug-config_broker=true"
-//using Debug = ConditionalDebug<DEBUG_CONFIG_BROKER, "Config Broker">;
-using Debug = ConditionalDebug<true, "Config Broker">;
+using Debug = ConditionalDebug<DEBUG_CONFIG_BROKER, "Config Broker">;
 
 namespace
 {

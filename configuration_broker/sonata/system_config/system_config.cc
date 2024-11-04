@@ -109,7 +109,7 @@ void __cheri_compartment("system_config") init()
 
 		// Sleep a bit
 		Debug::log("thread {} Sleeping", thread_id_get());
-		Timeout t1{MS_TO_TICKS(2000)};
+		Timeout t1{MS_TO_TICKS(10000)};
 		thread_sleep(&t1, ThreadSleepNoEarlyWake);
 		Debug::log("thread {} Awake", thread_id_get());
 		

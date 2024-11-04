@@ -48,44 +48,16 @@ namespace
 	 */
 	int system_config_handler(void *newConfig)
 	{
-		static auto init = false;
-		
 		// Process the configuration
 		auto config= static_cast<systemConfig::Config *>(newConfig);
 		
 		Debug::log("System Config: {}",
 					(const char *)config->id);
 
-		CHERI::with_interrupts_disabled([&]() {	
-			static auto lcd  = SonataLcd();
-		
-			auto screen   = Rect::from_point_and_size(Point::ORIGIN, lcd.resolution());
-			
-			if (!init) {
-				auto logoRect = screen.centered_subrect({105, 80});
-				lcd.draw_image_rgb565(logoRect, CTLogo105x80);
-				init = true;
-			}
-		
-			auto idRect = Rect::from_point_and_size({0, 0}, {screen.right, 17});
-			lcd.fill_rect(idRect, Color::White);
-			lcd.draw_str({10, 2}, config->id, Color::White, Color::Black);
-			
-			uint32_t x = 5;
-			uint32_t y = screen.bottom-17;
-			char switchNr[2];
-			for (auto i=0; i<8; i++) {
-				Debug::log("Switch {}: {} {} {}", i, config->switches[i], x, y);
-				snprintf(switchNr, 2, "%d", i);
-				if (config->switches[i]) {
-					lcd.draw_str({x, y}, switchNr, Color::Red, Color::White);
-				} else {
-					lcd.draw_str({x, y}, switchNr, Color::Black, Color::White);
-				}
-				x += 12;
-			}
-		});
-	
+		char switchNr[2];
+		for (auto i=0; i<8; i++) {
+			Debug::log("Switch {}: {}", i, config->switches[i]);
+		}
 		return 0;
 	}
 

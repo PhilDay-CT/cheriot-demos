@@ -13,7 +13,7 @@
 #include "config_consumer.h"
 
 // Expose debugging features unconditionally for this compartment.
-using Debug = ConditionalDebug<true, "ConfigConsumer">;
+using Debug = ConditionalDebug<false, "ConfigConsumer">;
 
 namespace ConfigConsumer
 {
@@ -60,9 +60,10 @@ namespace ConfigConsumer
 			// find out which value changed
 			for (auto i = 0; i < numOfItems; i++)
 			{
-				Debug::log("Item {} of {} changed", i, numOfItems);
 				if (events[i].value == 1)
 				{
+					Debug::log("Item {} of {} changed", i, numOfItems);
+				
 					auto c    = &configItems[i];
 					auto item = get_config(c->capability);
 

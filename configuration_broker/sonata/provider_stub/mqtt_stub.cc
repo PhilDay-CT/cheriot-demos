@@ -119,7 +119,7 @@ namespace
  * next message. After all the messages has been sent it sends two further
  * messages in quick succession to show the rate limiting in operation.
  */
-void __cheri_compartment("mqtt") mqtt_init()
+void __cheri_compartment("provider") provider_init()
 {
 
 	for (auto &m : Messages)
