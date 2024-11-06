@@ -23,15 +23,11 @@ includes("../common/json_parser")
 includes("../common/config_broker") 
 includes("../common/config_consumer")
 
--- System Configuration compartment
-includes("system_config")
+-- init compartments
+includes("init")
 
 -- MQTT Client to provide configurtaion
 includes("provider")
-
--- Parser init compartment
-compartment("parser_init")
-    add_files("parser_init/parser_init.cc")
 
 -- Configuration JSON parser sandboxes
 includes("../config/parsers/rgb_led")
@@ -46,37 +42,39 @@ firmware("config-broker-sonata")
     add_deps("freestanding", "debug", "string")
 
     -- libraries
-    add_deps("json_parser")
-    add_deps("config_consumer")
-    
+    --X add_deps("json_parser")
+    --X add_deps("config_consumer")
+
     -- compartments
+    --X add_deps("parser_init")
+    add_deps("network_init")
+
     add_deps("provider")
-    add_deps("config_broker")
 
-    add_deps("system_config")
+    --X add_deps("config_broker")
 
-    add_deps("parser_init")
-    add_deps("parser_system_config")
-    add_deps("parser_rgb_led")
-    add_deps("parser_user_led")
+    --X add_deps("parser_system_config")
+    --X add_deps("parser_rgb_led")
+    --X add_deps("parser_user_led")
     
-    add_deps("consumers")
+    --X add_deps("consumers")
     
     on_load(function(target)
         target:values_set("board", "$(board)")
         target:values_set("threads", {
             {
                 -- Thread to Get data from MQTT
-                compartment = "provider",
-                priority = 1,
-                entry_point = "provider_init",
+                -- Also acts as the init service
+                compartment = "network_init",
+                priority = 2,
+                entry_point = "network_init",
                 stack_size = 8160,
-                trusted_stack_frames = 8
+                trusted_stack_frames = 10
             },
             {
                 -- TCP/IP stack thread.
                 compartment = "TCPIP",
-                priority = 1,
+                priority = 2,
                 entry_point = "ip_thread_entry",
                 stack_size = 0x1000,
                 trusted_stack_frames = 5
@@ -87,7 +85,7 @@ firmware("config-broker-sonata")
                 -- Higher priority, this will be back-pressured by the message
                 -- queue if the network stack can't keep up, but we want
                 -- packets to arrive immediately.
-                priority = 2,
+                priority = 4,
                 entry_point = "ethernet_run_driver",
                 stack_size = 0x1000,
                 trusted_stack_frames = 5

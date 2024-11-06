@@ -8,19 +8,16 @@
 #include <fail-simulator-on-error.h>
 #include <locks.hh>
 #include <mqtt.h>
-#include <platform-entropy.hh>
-#include <platform-rgbctrl.hh>
 #include <sntp.h>
 #include <tick_macros.h>
+#include <platform-entropy.hh>
 
-//#include "third_party/display_drivers/lcd.hh"
-#include <platform-gpio.hh>
 
 #include "mosquitto.org.h"
 
 using CHERI::Capability;
 
-using Debug            = ConditionalDebug<true, "Hugh the lightbulb">;
+using Debug            = ConditionalDebug<true, "Provider">;
 constexpr bool UseIPv6 = CHERIOT_RTOS_OPTION_IPv6;
 
 /// Maximum permitted MQTT client identifier length (from the MQTT
@@ -46,76 +43,49 @@ DECLARE_AND_DEFINE_CONNECTION_CAPABILITY(MosquittoOrgMQTT,
 
 DECLARE_AND_DEFINE_ALLOCATOR_CAPABILITY(mqttTestMalloc, 32 * 1024);
 
-std::string           topic;
-std::atomic<uint32_t> barrier;
+std::string config_topic;
+std::string status_topic;
+
 
 void __cheri_callback publishCallback(const char *topic,
                                       size_t      topicLength,
                                       const void *payload,
                                       size_t      payloadLength)
 {
-	// FIXME: Work out why != doesn't work (non-mangled memcmp being inserted)
-	if (memcmp(topic, ::topic.data(), std::min(topicLength, ::topic.size())) !=
-	    0)
-	{
-		Debug::log(
-		  "Received a publish message on topic '{}', but expected '{}'",
-		  std::string_view{topic, topicLength},
-		  ::topic);
-		return;
-	}
-	if (payloadLength < 3)
-	{
-		Debug::log("Payload is too short to be a colour");
-		return;
-	}
-	auto *colours = static_cast<const uint8_t *>(payload);
-	auto  leds    = MMIO_CAPABILITY(SonataRgbLedController, rgbled);
-	leds->rgb(SonataRgbLed::Led0, colours[0], colours[1], colours[2]);
-	leds->update();
+	Debug::log("Received a message on topic '{}'",
+	           std::string_view{topic, topicLength});
 }
 
-auto status_leds()
-{
-	return MMIO_CAPABILITY(SonataGPIO, gpio);
-}
+#define ID_SIZE 8
 
-void __cheri_compartment("provider") provider_init()
+void __cheri_compartment("provider") provider_run()
 {
 	int     ret;
 	Timeout t{MS_TO_TICKS(5000)};
 
-	status_leds()->led_on(0);
-	network_start();
-	status_leds()->led_on(1);
-
-	// SNTP must be run for the TLS stack to be able to check certificate dates.
-	while (sntp_update(&t) != 0)
+	// generate an ID
+	char id[ID_SIZE];
 	{
-		Debug::log("Failed to update NTP time");
-		t = Timeout{MS_TO_TICKS(5000)};
-	}
-	status_leds()->led_on(2);
-
-	{
-		timeval tv;
-		int     ret = gettimeofday(&tv, nullptr);
-		if (ret != 0)
+		EntropySource entropySource;
+		for (int i = 0; i < ID_SIZE; i++)
 		{
-			Debug::log("Failed to get time of day: {}", ret);
-		}
-		else
-		{
-			// Truncate the epoch time to 32 bits for printing.
-			Debug::log("Current UNIX epoch time: {}", int32_t(tv.tv_sec));
+			id[i] = ('a' + entropySource() % 26);
 		}
 	}
+
+	constexpr std::string_view TopicPrefix{"sonata-cb/"};
+	config_topic.reserve(TopicPrefix.size() + 8 + 7);
+	config_topic.append(TopicPrefix.data(), TopicPrefix.size());
+	config_topic.append(id, ID_SIZE);
+	config_topic.append("/config", 7);
+	
+	status_topic.reserve(TopicPrefix.size() + 8 + 7);
+	status_topic.append(TopicPrefix.data(), TopicPrefix.size());
+	status_topic.append(id, ID_SIZE);
+	status_topic.append("/status", 7);
 
 	while (true)
 	{
-		status_leds()->led_off(3);
-		status_leds()->led_off(4);
-
 		// Prefix with something recognizable, for convenience.
 		memcpy(clientID.data(), clientIDPrefix.data(), clientIDPrefix.size());
 		// Suffix with random character chain.
@@ -137,8 +107,7 @@ void __cheri_compartment("provider") provider_init()
 		                           outgoingPublishCount,
 		                           clientID.data(),
 		                           clientID.size());
-		status_leds()->led_on(3);
-
+	
 		if (!Capability{handle}.is_valid())
 		{
 			Debug::log("Failed to connect.");
@@ -147,14 +116,13 @@ void __cheri_compartment("provider") provider_init()
 
 		Debug::log("Connected to MQTT broker!");
 
-/*
 		Debug::log(
-		  "Subscribing to topic '{}' ({} bytes)", topic.c_str(), topic.size());
+		  "Subscribing to topic '{}' ({} bytes)", config_topic.c_str(), config_topic.size());
 		ret = mqtt_subscribe(&t,
 		                     handle,
 		                     1, // QoS 1 = delivered at least once
-		                     topic.data(),
-		                     topic.size());
+		                     config_topic.data(),
+		                     config_topic.size());
 
 		if (ret < 0)
 		{
@@ -162,8 +130,6 @@ void __cheri_compartment("provider") provider_init()
 			mqtt_disconnect(&t, STATIC_SEALED_VALUE(mqttTestMalloc), handle);
 			continue;
 		}
-*/
-		status_leds()->led_on(4);
 
 		while (true)
 		{
@@ -172,9 +138,7 @@ void __cheri_compartment("provider") provider_init()
 
 			if (ret < 0)
 			{
-				Debug::log("Failed to wait for the SUBACK, error {}.", ret);
-				status_leds()->led_off(3);
-				status_leds()->led_off(4);
+				Debug::log("mqtt_run failed.", ret);
 				mqtt_disconnect(
 				  &t, STATIC_SEALED_VALUE(mqttTestMalloc), handle);
 				break;
@@ -182,5 +146,4 @@ void __cheri_compartment("provider") provider_init()
 		}
 	}
 }
-
 

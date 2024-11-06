@@ -7,8 +7,11 @@
 #include <thread.h>
 #include <tick_macros.h>
 
+#include "mqtt.h"
+#include "system_config.h"
+
 // Expose debugging features unconditionally for this compartment.
-using Debug = ConditionalDebug<true, "Provider">;
+using Debug = ConditionalDebug<true, "Provider_Config">;
 
 /**
  * Define the sealed capabilites for each of the configuration
@@ -105,3 +108,4 @@ int updateConfig(const char *name,
 
 	return res;
 };
+

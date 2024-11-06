@@ -14,14 +14,15 @@ using Debug = ConditionalDebug<true, "Parser Init">;
 // we wrap the initialisation into a single method which is put
 // into its own compartment
 //
-// The thread that will eventually become the MQTT handler starts
-// in this compatement
+// The thread that calls this should do so before it calls into
+// any compartment that handles untrusted data
 //
 int __cheri_compartment("parser_rgb_led") parse_rgb_led_init();
 int __cheri_compartment("parser_user_led") parse_user_led_init();
 int __cheri_compartment("parser_system_config") parse_system_config_init();
 
-int __cheri_compartment("system_config") init();
+// Next step in initialisation
+int __cheri_compartment("network_init") network_init();
 
 void __cheri_compartment("parser_init") parser_init()
 {
@@ -33,9 +34,9 @@ void __cheri_compartment("parser_init") parser_init()
 
 	if (res == 0)
 	{
-		// All good - jump into the MQTT handler
+		// All good - jump into the next initaliser
 		Debug::log("Parsers initialised");
-		init();
+		network_init();
 	}
 	else
 	{
