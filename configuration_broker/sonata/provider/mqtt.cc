@@ -15,6 +15,7 @@
 #include "mosquitto.org.h"
 
 #include "status.h"
+#include "provider.h"
 
 using CHERI::Capability;
 
@@ -55,6 +56,24 @@ void __cheri_callback publishCallback(const char *topic,
 {
 	Debug::log("Received a message on topic '{}'",
 	           std::string_view{topic, topicLength});
+
+	// Extract the config ID from the topic
+	size_t idOffset = config_topic.size() - 1;
+
+	if (idOffset < topicLength) 
+	{
+		const char *id = topic + idOffset;
+		size_t idLength = topicLength - idOffset;
+
+		Debug::log("extracted ID '{}'",
+	    	       std::string_view{id, idLength});
+
+		updateConfig(id, idLength, payload, payloadLength);
+	}
+	else
+	{
+		Debug::log("Missing config id in topic: {} {}", idOffset, topicLength);
+	}   
 }
 
 #define ID_SIZE 8
@@ -78,7 +97,7 @@ void __cheri_compartment("provider") provider_run()
 	config_topic.reserve(TopicPrefix.size() + 8 + 7);
 	config_topic.append(TopicPrefix.data(), TopicPrefix.size());
 	config_topic.append(id, ID_SIZE);
-	config_topic.append("/config", 7);
+	config_topic.append("/config/#", 9);
 	
 	status_topic.reserve(TopicPrefix.size() + 8 + 7);
 	status_topic.append(TopicPrefix.data(), TopicPrefix.size());

@@ -42,22 +42,22 @@ firmware("config-broker-sonata")
     add_deps("freestanding", "debug", "string")
 
     -- libraries
-    --X add_deps("json_parser")
-    --X add_deps("config_consumer")
+    add_deps("json_parser")
+    add_deps("config_consumer")
 
     -- compartments
-    --X add_deps("parser_init")
+    add_deps("parser_init")
     add_deps("network_init")
 
     add_deps("provider")
 
-    --X add_deps("config_broker")
+    add_deps("config_broker")
 
     --X add_deps("parser_system_config")
-    --X add_deps("parser_rgb_led")
-    --X add_deps("parser_user_led")
+    add_deps("parser_rgb_led")
+    add_deps("parser_user_led")
     
-    --X add_deps("consumers")
+    add_deps("consumers")
     
     on_load(function(target)
         target:values_set("board", "$(board)")
@@ -65,11 +65,20 @@ firmware("config-broker-sonata")
             {
                 -- Thread to Get data from MQTT
                 -- Also acts as the init service
-                compartment = "network_init",
+                compartment = "parser_init",
                 priority = 2,
-                entry_point = "network_init",
+                entry_point = "parser_init",
                 stack_size = 8160,
                 trusted_stack_frames = 10
+            },
+            {
+                -- Thread consume safe config
+                -- updates
+                compartment = "consumers",
+                priority = 1,
+                entry_point = "init",
+                stack_size = 0x500,
+                trusted_stack_frames = 8
             },
             {
                 -- TCP/IP stack thread.
