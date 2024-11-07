@@ -12,8 +12,9 @@
 #include <tick_macros.h>
 #include <platform-entropy.hh>
 
-
 #include "mosquitto.org.h"
+
+#include "status.h"
 
 using CHERI::Capability;
 
@@ -133,9 +134,9 @@ void __cheri_compartment("provider") provider_run()
 
 		while (true)
 		{
-			size_t  heapFree = heap_available();
+			send_status(handle, status_topic);
+			
 			ret = mqtt_run(&t, handle);
-
 			if (ret < 0)
 			{
 				Debug::log("mqtt_run failed.", ret);
@@ -143,6 +144,7 @@ void __cheri_compartment("provider") provider_run()
 				  &t, STATIC_SEALED_VALUE(mqttTestMalloc), handle);
 				break;
 			}
+
 		}
 	}
 }

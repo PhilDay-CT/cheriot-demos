@@ -11,7 +11,7 @@ compartment("provider")
     add_includedirs("../..")
     add_files("mqtt.cc")
     add_files("provider.cc")
-    add_files("system_config.cc")
+    add_files("status.cc")
 
     on_load(function(target)
         target:add('options', "IPv6")

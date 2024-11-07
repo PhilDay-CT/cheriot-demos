@@ -23,6 +23,7 @@ void __cheri_compartment("network_init") network_init()
 	network_start();
 	
 	// SNTP must be run for the TLS stack to be able to check certificate dates.
+	Debug::log("Connect to NTP");
 	Timeout t{MS_TO_TICKS(5000)};
 	while (sntp_update(&t) != 0)
 	{
