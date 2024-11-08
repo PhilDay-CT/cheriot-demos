@@ -8,6 +8,8 @@
 #include <thread.h>
 #include <token.h>
 #include <platform-gpio.hh>
+#include <platform-entropy.hh>
+
 
 // Define a sealed capability that gives this compartment
 // read access to configuration data "logger" and "rgb_led"
@@ -64,14 +66,31 @@ namespace
  * or more configuration values and then calls the
  * appropriate handler.
  */
-void __cheri_compartment("system_config") init()
+void __cheri_compartment("system_config") system_config_run()
 {
 	static systemConfig::Config config;
 
 	SObj setCap = WRITE_CONFIG_CAPABILITY(SYSTEM_CONFIG);
 			
-	// Generate a system name
-	char name[13] = "CT-Sonata";
+	char name[systemConfig::IdLength-3];
+	if (strcmp(SYSTEM_ID, "random") == 0)
+	{
+		// Generate a random 8 char name
+		{
+			EntropySource entropySource;
+			for (int i = 0; i < 8; i++)
+			{
+				name[i] = ('a' + entropySource() % 26);
+			}
+			name[8] = '\0';
+		}
+	}
+	else {
+		size_t max_id = (sizeof(name)/sizeof(name[0]))-1;
+		auto len = std::min(max_id, strlen(SYSTEM_ID));
+		strncpy(name, SYSTEM_ID, len);
+		name[len] = '\0';
+	}
 
 	// Loop reading the switches and updating
 	// config if they change
@@ -91,8 +110,8 @@ void __cheri_compartment("system_config") init()
 			snprintf(config.id, sizeof(config.id), "%s-%d", name, newId);
 		}
 
-		Debug::log("id {} -> {}  switches {} -> {}", id, newId, switchValue, newSwitchValue);
 		if ((switchValue != newSwitchValue) || (id != newId)) {
+			Debug::log("Updating system config");
 			CHERI::Capability confCap{&config};
 			confCap.permissions() &= CHERI::Permission::Load;		
 			auto res = set_config(setCap, confCap, sizeof(config));
@@ -108,11 +127,8 @@ void __cheri_compartment("system_config") init()
 		}
 
 		// Sleep a bit
-		Debug::log("thread {} Sleeping", thread_id_get());
 		Timeout t1{MS_TO_TICKS(10000)};
 		thread_sleep(&t1, ThreadSleepNoEarlyWake);
-		Debug::log("thread {} Awake", thread_id_get());
-		
 	}
 
 }

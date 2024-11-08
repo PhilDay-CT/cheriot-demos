@@ -14,8 +14,17 @@
 
 #include "mosquitto.org.h"
 
+#include "config/include/system_config.h"
+
+#include "config.h"
 #include "status.h"
-#include "provider.h"
+
+// Define sealed capability that gives this compartment
+// read access to configuration data
+#include "common/config_broker/config_broker.h"
+
+#define SYSTEM_CONFIG "system"
+DEFINE_READ_CONFIG_CAPABILITY(SYSTEM_CONFIG)
 
 using CHERI::Capability;
 
@@ -47,6 +56,23 @@ DECLARE_AND_DEFINE_ALLOCATOR_CAPABILITY(mqttTestMalloc, 32 * 1024);
 
 std::string config_topic;
 std::string status_topic;
+
+void generate_topics(char *id) {
+	constexpr std::string_view TopicPrefix{"sonata-config/"};
+
+	config_topic.clear();
+	config_topic.reserve(TopicPrefix.size() + 8 + 7);
+	config_topic.append(TopicPrefix.data(), TopicPrefix.size());
+	config_topic.append("Config/", 7);
+	config_topic.append(id, strlen(id));
+	config_topic.append("/#", 2);
+	
+	status_topic.clear();
+	status_topic.reserve(TopicPrefix.size() + 8 + 7);
+	status_topic.append(TopicPrefix.data(), TopicPrefix.size());
+	status_topic.append("Status/", 7);
+	status_topic.append(id, strlen(id));
+}
 
 
 void __cheri_callback publishCallback(const char *topic,
@@ -83,6 +109,10 @@ void __cheri_compartment("provider") provider_run()
 	int     ret;
 	Timeout t{MS_TO_TICKS(5000)};
 
+	// Variables for tracking the system config
+	SObj configHandle = READ_CONFIG_CAPABILITY(SYSTEM_CONFIG);
+	uint32_t configVersion = 0;
+
 	// generate an ID
 	char id[ID_SIZE];
 	{
@@ -92,17 +122,6 @@ void __cheri_compartment("provider") provider_run()
 			id[i] = ('a' + entropySource() % 26);
 		}
 	}
-
-	constexpr std::string_view TopicPrefix{"sonata-cb/"};
-	config_topic.reserve(TopicPrefix.size() + 8 + 7);
-	config_topic.append(TopicPrefix.data(), TopicPrefix.size());
-	config_topic.append(id, ID_SIZE);
-	config_topic.append("/config/#", 9);
-	
-	status_topic.reserve(TopicPrefix.size() + 8 + 7);
-	status_topic.append(TopicPrefix.data(), TopicPrefix.size());
-	status_topic.append(id, ID_SIZE);
-	status_topic.append("/status", 7);
 
 	while (true)
 	{
@@ -114,21 +133,21 @@ void __cheri_compartment("provider") provider_run()
 
 		Debug::log("Connecting to MQTT broker...");
 
-		t           = UnlimitedTimeout;
-		SObj handle = mqtt_connect(&t,
-		                           STATIC_SEALED_VALUE(mqttTestMalloc),
-		                           STATIC_SEALED_VALUE(MosquittoOrgMQTT),
-		                           publishCallback,
-		                           nullptr,
-		                           TAs,
-		                           TAs_NUM,
-		                           networkBufferSize,
-		                           incomingPublishCount,
-		                           outgoingPublishCount,
-		                           clientID.data(),
-		                           clientID.size());
+		t               = UnlimitedTimeout;
+		SObj mqttHandle = mqtt_connect(&t,
+		                               STATIC_SEALED_VALUE(mqttTestMalloc),
+		                               STATIC_SEALED_VALUE(MosquittoOrgMQTT),
+	                                   publishCallback,
+		                               nullptr,
+	    	                           TAs,
+		                               TAs_NUM,
+		                               networkBufferSize,
+		                               incomingPublishCount,
+		                               outgoingPublishCount,
+		                               clientID.data(),
+		                               clientID.size());
 	
-		if (!Capability{handle}.is_valid())
+		if (!Capability{mqttHandle}.is_valid())
 		{
 			Debug::log("Failed to connect.");
 			continue;
@@ -136,31 +155,67 @@ void __cheri_compartment("provider") provider_run()
 
 		Debug::log("Connected to MQTT broker!");
 
-		Debug::log(
-		  "Subscribing to topic '{}' ({} bytes)", config_topic.c_str(), config_topic.size());
-		ret = mqtt_subscribe(&t,
-		                     handle,
-		                     1, // QoS 1 = delivered at least once
-		                     config_topic.data(),
-		                     config_topic.size());
-
-		if (ret < 0)
-		{
-			Debug::log("Failed to subscribe, error {}.", ret);
-			mqtt_disconnect(&t, STATIC_SEALED_VALUE(mqttTestMalloc), handle);
-			continue;
-		}
-
+		bool subscribed = false;
 		while (true)
 		{
-			send_status(handle, status_topic);
-			
-			ret = mqtt_run(&t, handle);
+			// read the current system config
+			auto config = get_config(configHandle);
+			if (config.data == nullptr)
+			{
+				Debug::log("No System Config data yet");
+				continue;
+			} else if (config.version != configVersion) {
+				Debug::log("Config updated");
+				Timeout t{5000};
+				int claimed = heap_claim_fast(&t, config.data, nullptr);
+				if (claimed == 0)
+				{
+					systemConfig::Config *sysConfig = static_cast<systemConfig::Config *>(config.data);
+	
+					if (subscribed)
+					{
+						clear_status(mqttHandle, status_topic);
+						ret = mqtt_unsubscribe(&t,
+											   mqttHandle,
+											   1, // QoS 1 = delivered at least once
+											   config_topic.data(),
+											   config_topic.size());
+					}
+
+					// Update the topics to contain the system id
+					generate_topics(sysConfig->id);
+					
+					Debug::log(
+		  				"Subscribing to topic '{}' ({} bytes)", config_topic.c_str(), config_topic.size());
+					ret = mqtt_subscribe(&t,
+											mqttHandle,
+											1, // QoS 1 = delivered at least once
+											config_topic.data(),
+											config_topic.size());
+
+					if (ret < 0)
+					{
+						Debug::log("Failed to subscribe, error {}.", ret);
+						mqtt_disconnect(&t, STATIC_SEALED_VALUE(mqttTestMalloc), mqttHandle);
+						break;
+					}					
+					subscribed = true;
+					send_status(mqttHandle, status_topic, sysConfig);
+					configVersion = config.version;
+				}
+				else
+				{
+					Debug::log("fast claim failed for config data: {}", config.data);
+				}
+			}
+
+			// process any received messages
+			ret = mqtt_run(&t, mqttHandle);
 			if (ret < 0)
 			{
 				Debug::log("mqtt_run failed.", ret);
 				mqtt_disconnect(
-				  &t, STATIC_SEALED_VALUE(mqttTestMalloc), handle);
+				  &t, STATIC_SEALED_VALUE(mqttTestMalloc), mqttHandle);
 				break;
 			}
 

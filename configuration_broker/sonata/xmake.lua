@@ -26,6 +26,9 @@ includes("../common/config_consumer")
 -- init compartments
 includes("init")
 
+-- System configuration
+includes("system_config")
+
 -- MQTT Client to provide configurtaion
 includes("provider")
 
@@ -49,11 +52,13 @@ firmware("config-broker-sonata")
     add_deps("parser_init")
     add_deps("network_init")
 
+    add_deps("system_config")
+
     add_deps("provider")
 
     add_deps("config_broker")
 
-    --X add_deps("parser_system_config")
+    add_deps("parser_system_config")
     add_deps("parser_rgb_led")
     add_deps("parser_user_led")
     
@@ -65,9 +70,20 @@ firmware("config-broker-sonata")
             {
                 -- Thread to Get data from MQTT
                 -- Also acts as the init service
+                -- for the parsers
                 compartment = "parser_init",
                 priority = 2,
                 entry_point = "parser_init",
+                stack_size = 0x500,
+                trusted_stack_frames = 4
+            },
+            {
+                -- Thread to Get data from MQTT
+                -- Also acts as the init service
+                -- for networking
+                compartment = "network_init",
+                priority = 2,
+                entry_point = "network_init",
                 stack_size = 8160,
                 trusted_stack_frames = 10
             },

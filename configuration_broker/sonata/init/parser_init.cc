@@ -19,10 +19,10 @@ using Debug = ConditionalDebug<true, "Parser Init">;
 //
 int __cheri_compartment("parser_rgb_led") parse_rgb_led_init();
 int __cheri_compartment("parser_user_led") parse_user_led_init();
-//int __cheri_compartment("parser_system_config") parse_system_config_init();
+int __cheri_compartment("parser_system_config") parse_system_config_init();
 
 // Next step in initialisation
-int __cheri_compartment("network_init") network_init();
+int __cheri_compartment("system_config") system_config_run();
 
 void __cheri_compartment("parser_init") parser_init()
 {
@@ -30,13 +30,13 @@ void __cheri_compartment("parser_init") parser_init()
 		
 	auto res = parse_user_led_init();
 	res      = std::min(res, parse_rgb_led_init());
-	//res      = std::min(res, parse_system_config_init());
+	res      = std::min(res, parse_system_config_init());
 
 	if (res == 0)
 	{
 		// All good - jump into the next initaliser
 		Debug::log("Parsers initialised");
-		network_init();
+		system_config_run();
 	}
 	else
 	{

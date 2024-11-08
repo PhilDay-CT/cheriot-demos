@@ -17,8 +17,6 @@ using Debug = ConditionalDebug<true, "Provider_Config">;
  * items this compartment is allowed to update
  */
 #include "common/config_broker/config_broker.h"
-#define SYSTEM_CONFIG "system"
-DEFINE_WRITE_CONFIG_CAPABILITY(SYSTEM_CONFIG)
 
 #define RGB_LED_CONFIG "rgb_led"
 DEFINE_WRITE_CONFIG_CAPABILITY(RGB_LED_CONFIG)
@@ -41,20 +39,17 @@ namespace
 
 	// We can't use the macros at the file level to statically
 	// initialise configItemMap, so do it via a function
-	Config configItemMap[3];
+	Config configItemMap[2];
 	void   set_up_name_map()
 	{
 		static bool init = false;
 		if (!init)
 		{
-			configItemMap[0].name = "rgbled";
+			configItemMap[0].name = "rgb_LED";
 			configItemMap[0].cap  = WRITE_CONFIG_CAPABILITY(RGB_LED_CONFIG);
 
-			configItemMap[1].name = "userled";
+			configItemMap[1].name = "user_LED";
 			configItemMap[1].cap  = WRITE_CONFIG_CAPABILITY(USER_LED_CONFIG);
-
-			configItemMap[2].name = "system";
-			configItemMap[2].cap  = WRITE_CONFIG_CAPABILITY(SYSTEM_CONFIG);
 
 			init = true;
 		}
