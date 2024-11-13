@@ -7,7 +7,8 @@ compartment("provider")
 
     add_includedirs("../../../network-stack/include")
     add_deps("freestanding", "TCPIP", "NetAPI", "TLS", "Firewall", "SNTP", "MQTT", "time_helpers", "debug", "stdio")
-  
+    add_deps("unwind_error_handler")
+    
     add_includedirs("../..")
     add_files("mqtt.cc")
     add_files("config.cc")

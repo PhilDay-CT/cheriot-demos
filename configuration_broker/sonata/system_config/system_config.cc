@@ -96,11 +96,11 @@ void __cheri_compartment("system_config") system_config_run()
 	// Loop reading the switches and updating
 	// config if they change
 	int switchValue = -1;
-	int id = -1;		
+	int id = -1;
 	while (true) {
-
-		CHERIOT_DURING
-		{
+		 
+		on_error([&]() {		
+		
 			int newSwitchValue = 0;
 			for (auto i=0; i<8; i++) {
 				config.switches[i] = switches()->read_switch(i);
@@ -133,11 +133,8 @@ void __cheri_compartment("system_config") system_config_run()
 			// Sleep a bit
 			Timeout t1{MS_TO_TICKS(10000)};
 			thread_sleep(&t1, ThreadSleepNoEarlyWake);
-		}
-		CHERIOT_HANDLER
-		{
-			Debug::log("Unexpected error in System Config generator");
-		}
-		CHERIOT_END_HANDLER
+		},
+		[&]() {Debug::log("Unexpected error in System Config generator");});
 	}
+	
 }

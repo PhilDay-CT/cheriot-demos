@@ -9,6 +9,7 @@ option("system-id")
 compartment("system_config")
     set_default(false)
     add_includedirs("../..")
+    add_deps("unwind_error_handler")
     add_files("system_config.cc")
 
     on_load(function(target)

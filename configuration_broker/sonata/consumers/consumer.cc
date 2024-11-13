@@ -183,17 +183,12 @@ void __cheri_compartment("consumers") init()
 
 	size_t numOfItems = sizeof(configItems) / sizeof(configItems[0]);
 
-	while (true)
-	{
-		CHERIOT_DURING
-		{
-			ConfigConsumer::run(configItems, numOfItems);
-		}
-		CHERIOT_HANDLER
-		{
-			Debug::log("Unexpected error in Consumer");
-		}
-		CHERIOT_END_HANDLER
+	while (true) {
+		on_error(
+			[&]() {ConfigConsumer::run(configItems, numOfItems);},
+			[&]() {Debug::log("Unexpected error in Consumer");}
+		);
+		
 	}
 	
 }

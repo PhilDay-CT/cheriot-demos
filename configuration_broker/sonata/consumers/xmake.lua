@@ -7,8 +7,8 @@ compartment("consumers")
     set_default(false)
     add_includedirs("../..")
     add_files("consumer.cc")
-    --add_files("led_consumer.cc")
     add_deps("cxxrt", "stdio")
+    add_deps("unwind_error_handler")
     
     -- LCD drivers
     add_files("../third_party/display_drivers/core/lcd_base.c")

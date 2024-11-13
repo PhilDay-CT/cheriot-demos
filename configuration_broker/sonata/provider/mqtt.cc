@@ -233,7 +233,7 @@ void __cheri_compartment("provider") provider_run()
 
 		// Use the unwind error handler around our
 		// main loop
-		CHERIOT_DURING
+		on_error([&]()
 		{	
 			// start the main loop, only exit this if
 			// something goes wrong
@@ -258,13 +258,8 @@ void __cheri_compartment("provider") provider_run()
 				Timeout t{MS_TO_TICKS(5)};
 				thread_sleep(&t);
 			}
- 		}	
-		CHERIOT_HANDLER
-		{
-			Debug::log("Unexpected error in MQTT Client");
-		}
-		CHERIOT_END_HANDLER
-
+ 		});	
+		
 		// If we got here something went wrong, so disconnect
 		// and try again
 		Debug::log("Disconecting from MQTT server");
