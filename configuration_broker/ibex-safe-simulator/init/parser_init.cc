@@ -21,7 +21,8 @@ int __cheri_compartment("parser_rgb_led") parse_rgb_led_init();
 int __cheri_compartment("parser_user_led") parse_user_led_init();
 int __cheri_compartment("parser_logger") parse_logger_init();
 
-int __cheri_compartment("mqtt") mqtt_init();
+// Next step after initalisation
+int __cheri_compartment("provider") provider_run();
 
 void __cheri_compartment("parser_init") parser_init()
 {
@@ -33,7 +34,7 @@ void __cheri_compartment("parser_init") parser_init()
 	{
 		// All good - jump into the MQTT handler
 		Debug::log("Parsers initialised");
-		mqtt_init();
+		provider_run();
 	}
 	else
 	{

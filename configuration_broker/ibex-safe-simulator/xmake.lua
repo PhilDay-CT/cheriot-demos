@@ -19,13 +19,11 @@ includes("../common/json_parser")
 includes("../common/config_broker") 
 includes("../common/config_consumer")
 
+-- Initialisation compartment
+includes("init")
 
 -- Mocked MQTT Client to provide configurtaion
-includes("mqtt")
-
--- Parser init compartment
-compartment("parser_init")
-    add_files("parser_init/parser_init.cc")
+includes("provider")
 
 -- Configuration JSON parser sandboxes
 includes("../config/parsers/rgb_led")
@@ -44,9 +42,9 @@ firmware("config-broker-ibex-sim")
     add_deps("config_consumer")
     
     -- compartments
-    add_deps("mqtt")
-    add_deps("config_broker")
     add_deps("parser_init")
+    add_deps("provider")
+    add_deps("config_broker")
     add_deps("parser_logger")
     add_deps("parser_rgb_led")
     add_deps("parser_user_led")
@@ -58,7 +56,7 @@ firmware("config-broker-ibex-sim")
             {
                 -- Thread to receive config values.
                 -- Starts in the parser_init compartment
-                -- and then loops in the mqtt compartment.
+                -- and then loops in the provider compartment.
                 compartment = "parser_init",
                 priority = 1,
                 entry_point = "parser_init",

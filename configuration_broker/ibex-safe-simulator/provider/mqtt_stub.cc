@@ -48,7 +48,7 @@
 #include <fail-simulator-on-error.h>
 #include <thread.h>
 
-#include "provider.h"
+#include "config.h"
 
 // Expose debugging features unconditionally for this compartment.
 using Debug = ConditionalDebug<true, "MQTT">;
@@ -137,7 +137,7 @@ namespace
  * next message. After all the messages has been sent it sends two further
  * messages in quick succession to show the rate limiting in operation.
  */
-void __cheri_compartment("mqtt") mqtt_init()
+void __cheri_compartment("provider") provider_run()
 {
 	Logger loggerConfig = {
 		"100.101.102.103",

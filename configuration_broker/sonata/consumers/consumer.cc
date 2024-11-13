@@ -7,6 +7,7 @@
 #include <debug.hh>
 #include <thread.h>
 #include <token.h>
+#include <unwind.h>
 
 //
 // As the network stack requires a lot of memory run all
@@ -182,5 +183,17 @@ void __cheri_compartment("consumers") init()
 
 	size_t numOfItems = sizeof(configItems) / sizeof(configItems[0]);
 
-	ConfigConsumer::run(configItems, numOfItems);
+	while (true)
+	{
+		CHERIOT_DURING
+		{
+			ConfigConsumer::run(configItems, numOfItems);
+		}
+		CHERIOT_HANDLER
+		{
+			Debug::log("Unexpected error in Consumer");
+		}
+		CHERIOT_END_HANDLER
+	}
+	
 }

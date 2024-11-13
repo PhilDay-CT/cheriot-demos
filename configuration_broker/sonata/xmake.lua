@@ -68,9 +68,9 @@ firmware("config-broker-sonata")
         target:values_set("board", "$(board)")
         target:values_set("threads", {
             {
-                -- Thread to Get data from MQTT
-                -- Also acts as the init service
-                -- for the parsers
+                -- Thread to set system configuration
+                -- from switches.  Also acts as the
+                -- init service for the parsers.
                 compartment = "parser_init",
                 priority = 2,
                 entry_point = "parser_init",

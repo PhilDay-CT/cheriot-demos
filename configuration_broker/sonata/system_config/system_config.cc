@@ -9,6 +9,7 @@
 #include <token.h>
 #include <platform-gpio.hh>
 #include <platform-entropy.hh>
+#include <unwind.h>
 
 
 // Define a sealed capability that gives this compartment
@@ -97,38 +98,46 @@ void __cheri_compartment("system_config") system_config_run()
 	int switchValue = -1;
 	int id = -1;		
 	while (true) {
-		int newSwitchValue = 0;
-		for (auto i=0; i<8; i++) {
-			config.switches[i] = switches()->read_switch(i);
-			if (config.switches[i]) {
-				newSwitchValue += 1<<i;
+
+		CHERIOT_DURING
+		{
+			int newSwitchValue = 0;
+			for (auto i=0; i<8; i++) {
+				config.switches[i] = switches()->read_switch(i);
+				if (config.switches[i]) {
+					newSwitchValue += 1<<i;
+				}
 			}
-		}
 
-		auto newId = read_id();
-		if (id != newId) {
-			snprintf(config.id, sizeof(config.id), "%s-%d", name, newId);
-		}
-
-		if ((switchValue != newSwitchValue) || (id != newId)) {
-			Debug::log("Updating system config");
-			CHERI::Capability confCap{&config};
-			confCap.permissions() &= CHERI::Permission::Load;		
-			auto res = set_config(setCap, confCap, sizeof(config));
-			if (res == 0)
-			{
-				id = newId;
-				switchValue = newSwitchValue;
-			} else {
-				Debug::log("thread {} Failed to set value for {}",
-				           thread_id_get(),
-				           setCap);
+			auto newId = read_id();
+			if (id != newId) {
+				snprintf(config.id, sizeof(config.id), "%s-%d", name, newId);
 			}
-		}
 
-		// Sleep a bit
-		Timeout t1{MS_TO_TICKS(10000)};
-		thread_sleep(&t1, ThreadSleepNoEarlyWake);
+			if ((switchValue != newSwitchValue) || (id != newId)) {
+				Debug::log("Updating system config");
+				CHERI::Capability confCap{&config};
+				confCap.permissions() &= CHERI::Permission::Load;		
+				auto res = set_config(setCap, confCap, sizeof(config));
+				if (res == 0)
+				{
+					id = newId;
+					switchValue = newSwitchValue;
+				} else {
+					Debug::log("thread {} Failed to set value for {}",
+							thread_id_get(),
+							setCap);
+				}
+			}
+
+			// Sleep a bit
+			Timeout t1{MS_TO_TICKS(10000)};
+			thread_sleep(&t1, ThreadSleepNoEarlyWake);
+		}
+		CHERIOT_HANDLER
+		{
+			Debug::log("Unexpected error in System Config generator");
+		}
+		CHERIOT_END_HANDLER
 	}
-
 }

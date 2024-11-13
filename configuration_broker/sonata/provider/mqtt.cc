@@ -5,12 +5,12 @@
 #include <cstdlib>
 #include <debug.hh>
 #include <errno.h>
-#include <fail-simulator-on-error.h>
 #include <locks.hh>
 #include <mqtt.h>
 #include <sntp.h>
 #include <tick_macros.h>
 #include <platform-entropy.hh>
+#include <unwind.h>
 
 #include "mosquitto.org.h"
 
@@ -57,6 +57,9 @@ DECLARE_AND_DEFINE_ALLOCATOR_CAPABILITY(mqttTestMalloc, 32 * 1024);
 std::string config_topic;
 std::string status_topic;
 
+/**
+ * Generate config and status topics from an assigned sysetm ID
+ */
 void generate_topics(char *id) {
 	constexpr std::string_view TopicPrefix{"sonata-config/"};
 
@@ -74,7 +77,10 @@ void generate_topics(char *id) {
 	status_topic.append(id, strlen(id));
 }
 
-
+/**
+ * Handle any incomming configuration messages.  The configurtaion
+ * item being updated is the last element of the topic
+ */
 void __cheri_callback publishCallback(const char *topic,
                                       size_t      topicLength,
                                       const void *payload,
@@ -102,35 +108,105 @@ void __cheri_callback publishCallback(const char *topic,
 	}   
 }
 
-#define ID_SIZE 8
+/**
+ * Check for changes in system status.
+ */
+int update_status(SObj configHandle, SObj mqttHandle) {
+
+	static bool subscribed = false;
+	static uint32_t configVersion = 0;
+	static systemConfig::Config *sysConfig;
+	
+	// read the current system config
+	auto config = get_config(configHandle);
+	if (config.data == nullptr)
+	{
+		Debug::log("No System Config data yet");
+		return 0;
+	} 
+	
+	if (config.version == configVersion) 
+	{	
+		return 0;
+	}
+	
+	configVersion = config.version;
+	Debug::log("Config updated to version {}", configVersion);
+	Timeout t{5000};
+	if (heap_claim(MALLOC_CAPABILITY, config.data) <= 0) {
+		Debug::log("Claim failed for config data: {} error: {}");
+		return -1;
+	}
+
+	systemConfig::Config *newSysConfig = static_cast<systemConfig::Config *>(config.data);
+
+	// Check if the ID has changed.  We can release our claim on the oldConfig after this
+	bool idChanged = true;
+	if (sysConfig) {
+		idChanged = (strncmp(newSysConfig->id, sysConfig->id, systemConfig::IdLength) != 0);
+		free(sysConfig);
+	}
+
+	sysConfig = newSysConfig;
+
+	// if the ID has changed we need to change the topics we're using
+	if (idChanged)
+	{
+		if (subscribed)
+		{
+			clear_status(mqttHandle, status_topic);
+			auto ret = mqtt_unsubscribe(&t,
+								mqttHandle,
+								1, // QoS 1 = delivered at least once
+								config_topic.data(),
+								config_topic.size());
+			if (ret < 0)					
+			{
+				Debug::log("Unsubscribe failed with {}", ret);
+				return -1;
+			}
+		}
+
+		// Update the topics to contain the system id
+		generate_topics(sysConfig->id);
+					
+		Debug::log("Subscribing to topic '{}' ({} bytes)", config_topic.c_str(), config_topic.size());
+		auto ret = mqtt_subscribe(&t,
+								mqttHandle,
+								1, // QoS 1 = delivered at least once
+								config_topic.data(),
+								config_topic.size());
+		if (ret < 0)
+		{
+			Debug::log("Failed to subscribe, error {}.", ret);
+			return -1;
+		}					
+		
+		subscribed = true;
+	}
+	
+	send_status(mqttHandle, status_topic, sysConfig);
+	
+	return 0;	
+}
 
 void __cheri_compartment("provider") provider_run()
 {
 	int     ret;
 	Timeout t{MS_TO_TICKS(5000)};
 
-	// Variables for tracking the system config
+	// Handle granting us access to read the system config
 	SObj configHandle = READ_CONFIG_CAPABILITY(SYSTEM_CONFIG);
-	uint32_t configVersion = 0;
-
-	// generate an ID
-	char id[ID_SIZE];
-	{
-		EntropySource entropySource;
-		for (int i = 0; i < ID_SIZE; i++)
-		{
-			id[i] = ('a' + entropySource() % 26);
-		}
-	}
+	
+	// Prefix with something recognizable, for convenience.
+	memcpy(clientID.data(), clientIDPrefix.data(), clientIDPrefix.size());
+	// Suffix with random character chain.
+	mqtt_generate_client_id(clientID.data() + clientIDPrefix.size(),
+		                    clientID.size() - clientIDPrefix.size());
 
 	while (true)
 	{
-		// Prefix with something recognizable, for convenience.
-		memcpy(clientID.data(), clientIDPrefix.data(), clientIDPrefix.size());
-		// Suffix with random character chain.
-		mqtt_generate_client_id(clientID.data() + clientIDPrefix.size(),
-		                        clientID.size() - clientIDPrefix.size());
-
+		
 		Debug::log("Connecting to MQTT broker...");
 
 		t               = UnlimitedTimeout;
@@ -155,71 +231,46 @@ void __cheri_compartment("provider") provider_run()
 
 		Debug::log("Connected to MQTT broker!");
 
-		bool subscribed = false;
-		while (true)
+		// Use the unwind error handler around our
+		// main loop
+		CHERIOT_DURING
+		{	
+			// start the main loop, only exit this if
+			// something goes wrong
+			while (true)
+			{
+				auto ret = update_status(configHandle, mqttHandle);
+				if (ret < 0)
+				{
+					Debug::log("update status failed - error {}", ret);
+					break;
+				}
+
+				// process any received messages
+				ret = mqtt_run(&t, mqttHandle);		
+				if (ret < 0)
+				{
+					Debug::log("mqtt_run failed - error {}", ret);
+					break;
+				}
+
+				// Give other threads a chance to run
+				Timeout t{MS_TO_TICKS(5)};
+				thread_sleep(&t);
+			}
+ 		}	
+		CHERIOT_HANDLER
 		{
-			// read the current system config
-			auto config = get_config(configHandle);
-			if (config.data == nullptr)
-			{
-				Debug::log("No System Config data yet");
-				continue;
-			} else if (config.version != configVersion) {
-				Debug::log("Config updated");
-				Timeout t{5000};
-				int claimed = heap_claim_fast(&t, config.data, nullptr);
-				if (claimed == 0)
-				{
-					systemConfig::Config *sysConfig = static_cast<systemConfig::Config *>(config.data);
-	
-					if (subscribed)
-					{
-						clear_status(mqttHandle, status_topic);
-						ret = mqtt_unsubscribe(&t,
-											   mqttHandle,
-											   1, // QoS 1 = delivered at least once
-											   config_topic.data(),
-											   config_topic.size());
-					}
-
-					// Update the topics to contain the system id
-					generate_topics(sysConfig->id);
-					
-					Debug::log(
-		  				"Subscribing to topic '{}' ({} bytes)", config_topic.c_str(), config_topic.size());
-					ret = mqtt_subscribe(&t,
-											mqttHandle,
-											1, // QoS 1 = delivered at least once
-											config_topic.data(),
-											config_topic.size());
-
-					if (ret < 0)
-					{
-						Debug::log("Failed to subscribe, error {}.", ret);
-						mqtt_disconnect(&t, STATIC_SEALED_VALUE(mqttTestMalloc), mqttHandle);
-						break;
-					}					
-					subscribed = true;
-					send_status(mqttHandle, status_topic, sysConfig);
-					configVersion = config.version;
-				}
-				else
-				{
-					Debug::log("fast claim failed for config data: {}", config.data);
-				}
-			}
-
-			// process any received messages
-			ret = mqtt_run(&t, mqttHandle);
-			if (ret < 0)
-			{
-				Debug::log("mqtt_run failed.", ret);
-				mqtt_disconnect(
-				  &t, STATIC_SEALED_VALUE(mqttTestMalloc), mqttHandle);
-				break;
-			}
-
+			Debug::log("Unexpected error in MQTT Client");
 		}
+		CHERIOT_END_HANDLER
+
+		// If we got here something went wrong, so disconnect
+		// and try again
+		Debug::log("Disconecting from MQTT server");
+		mqtt_disconnect(
+				&t, STATIC_SEALED_VALUE(mqttTestMalloc), mqttHandle);
+
 	}
 }
 
