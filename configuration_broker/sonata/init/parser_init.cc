@@ -27,7 +27,7 @@ int __cheri_compartment("system_config") system_config_run();
 void __cheri_compartment("parser_init") parser_init()
 {
 	Debug::log("initialising parsers");
-		
+
 	auto res = parse_user_led_init();
 	res      = std::min(res, parse_rgb_led_init());
 	res      = std::min(res, parse_system_config_init());

@@ -31,20 +31,20 @@ using Debug = ConditionalDebug<true, "System Config Parser">;
 
 #include "config/include/system_config.h"
 #define SYSTEM_CONFIG "system"
-DEFINE_PARSER_CONFIG_CAPABILITY(SYSTEM_CONFIG, sizeof(systemConfig::Config), 500);
+DEFINE_PARSER_CONFIG_CAPABILITY(SYSTEM_CONFIG,
+                                sizeof(systemConfig::Config),
+                                500);
 
-namespace {
+namespace
+{
 
-bool isValidChar(char c) {
-	return ((c >= 'a' && c <= 'z') ||
-	    (c >= 'A' && c <= 'Z') ||
-		(c >= '0' && c <= '9') ||
-		(c == '-' ) || (c == '_')
-	);
-}
+	bool is_valid_char(char c)
+	{
+		return ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+		        (c >= '0' && c <= '9') || (c == '-') || (c == '_'));
+	}
 
-} 
-
+} // namespace
 
 /**
  * Parse a json string into a LoggerConfig struct.
@@ -53,29 +53,35 @@ int __cheri_callback parse_system_config(const void *src,
                                          size_t      srcSize,
                                          void       *dst)
 {
-	auto *config = static_cast<systemConfig::Config *>(dst);
+	auto *config    = static_cast<systemConfig::Config *>(dst);
 	auto *srcConfig = static_cast<const systemConfig::Config *>(src);
-	bool parsed = true;
+	bool  parsed    = true;
 
 	// Check we have a valid id name
-	for (auto i=0; i< sizeof(config->id); i++) {
+	for (auto i = 0; i < sizeof(config->id); i++)
+	{
 		auto c = srcConfig->id[i];
 
-		if (c == 0) {
+		if (c == 0)
+		{
 			config->id[i] = c;
 			break;
 		}
-		if (!isValidChar(c)) {
+		if (!is_valid_char(c))
+		{
 			Debug::log("Invalid character {} in group", c);
 			parsed = false;
-			break; 
-		} else {
+			break;
+		}
+		else
+		{
 			config->id[i] = c;
 		}
 	}
 
 	// Copy the switch settings
-	for (auto i=0; i< sizeof(config->switches); i++) {
+	for (auto i = 0; i < sizeof(config->switches); i++)
+	{
 		config->switches[i] = srcConfig->switches[i];
 	}
 

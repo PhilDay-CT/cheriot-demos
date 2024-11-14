@@ -139,44 +139,36 @@ namespace
  */
 void __cheri_compartment("provider") provider_run()
 {
-	Logger loggerConfig = {
-		"100.101.102.103",
-		666,
-		2
-	};
+	Logger loggerConfig = {"100.101.102.103", 666, 2};
 
 	Debug::log("-------- Logger (Warn) --------");
-	auto res =
-		  updateConfig("logger", 6, &loggerConfig, sizeof(loggerConfig));
+	auto res = updateConfig("logger", 6, &loggerConfig, sizeof(loggerConfig));
 	Debug::Assert(res == 0, "Unexpected result {}", res);
-	
+
 	// Give the consumers a chance to run
 	Timeout t1{MS_TO_TICKS(500)};
 	thread_sleep(&t1, ThreadSleepNoEarlyWake);
-	
+
 	Debug::log("-------- Logger (Debug) --------");
 	loggerConfig.level = 0;
-	res =
-		  updateConfig("logger", 6, &loggerConfig, sizeof(loggerConfig));
+	res = updateConfig("logger", 6, &loggerConfig, sizeof(loggerConfig));
 	Debug::Assert(res == 0, "Unexpected result {}", res);
-	
+
 	// Give the consumers a chance to run
 	Timeout t2{MS_TO_TICKS(500)};
 	thread_sleep(&t2, ThreadSleepNoEarlyWake);
-	
+
 	Debug::log("-------- Logger (Invalid address and port) --------");
 	strcpy(loggerConfig.address, "invalidAddress");
 	loggerConfig.port = 0;
-	res =
-		  updateConfig("logger", 6, &loggerConfig, sizeof(loggerConfig));
+	res = updateConfig("logger", 6, &loggerConfig, sizeof(loggerConfig));
 	Debug::Assert(res == -EINVAL, "Unexpected result {}", res);
-	
+
 	Timeout t3{MS_TO_TICKS(500)};
 	thread_sleep(&t3, ThreadSleepNoEarlyWake);
 	Debug::log("-------- Logger (Bad data) --------");
 	char buffer[2];
-	res =
-		  updateConfig("logger", 6, &buffer, sizeof(loggerConfig));
+	res = updateConfig("logger", 6, &buffer, sizeof(loggerConfig));
 	Debug::Assert(res == -EINVAL, "Unexpected result {}", res);
 
 	for (auto &m : Messages)
@@ -188,8 +180,7 @@ void __cheri_compartment("provider") provider_run()
 		CHERI::Capability json{m.json};
 		topic.permissions() &= CHERI::Permission::Load;
 		json.permissions() &= CHERI::Permission::Load;
-		res =
-		  updateConfig(topic, strlen(m.topic), json, strlen(m.json));
+		res = updateConfig(topic, strlen(m.topic), json, strlen(m.json));
 		Debug::Assert(res == m.expected, "Unexpected result {}", res);
 
 		// Give the consumers a chance to run

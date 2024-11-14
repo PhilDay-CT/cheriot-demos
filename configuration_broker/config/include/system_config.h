@@ -7,17 +7,18 @@
 // System configurartion data, such as
 // id and current switch settings
 
-namespace systemConfig {
-
-const auto IdLength = 16;
-
-struct Config
+namespace systemConfig
 {
-	char id[IdLength];
-	bool switches[8];
-};
 
-} // systemConfig
+	const auto IdLength = 16;
+
+	struct Config
+	{
+		char id[IdLength];
+		bool switches[8];
+	};
+
+} // namespace systemConfig
 
 /**
  * Configure the systemConfig

@@ -59,7 +59,7 @@ int __cheri_callback parse_User_LED_config(const void *src,
                                            void       *dst)
 {
 	auto        *config = static_cast<userLed::Config *>(dst);
-	auto         json =  static_cast<const char *>(src);
+	auto         json   = static_cast<const char *>(src);
 	JSONStatus_t result;
 
 	auto initial_quota = heap_quota_remaining(MALLOC_CAPABILITY);

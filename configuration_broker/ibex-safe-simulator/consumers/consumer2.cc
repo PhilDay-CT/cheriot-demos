@@ -67,7 +67,7 @@ namespace
 	 */
 	int user_led_handler(void *newConfig)
 	{
-		// Note the consumer helper will have already made a 
+		// Note the consumer helper will have already made a
 		// fast claim on the new config value, and we only
 		// need it for the duration of this call
 

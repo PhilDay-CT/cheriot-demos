@@ -24,7 +24,6 @@ DEFINE_WRITE_CONFIG_CAPABILITY(RGB_LED_CONFIG)
 #define USER_LED_CONFIG "user_led"
 DEFINE_WRITE_CONFIG_CAPABILITY(USER_LED_CONFIG)
 
-
 namespace
 {
 
@@ -102,4 +101,3 @@ int updateConfig(const char *name,
 
 	return res;
 };
-

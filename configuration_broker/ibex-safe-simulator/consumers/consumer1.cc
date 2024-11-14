@@ -27,8 +27,7 @@ using Debug = ConditionalDebug<true, "Consumer #1">;
 
 #include "common/config_consumer/config_consumer.h"
 
-// For this version we want the consumer threads to exit itr 
-
+// For this version we want the consumer threads to exit itr
 
 namespace
 {
@@ -73,10 +72,10 @@ namespace
 	 */
 	int led_handler(void *newConfig)
 	{
-		// Note the consumer helper will have already made a 
+		// Note the consumer helper will have already made a
 		// fast claim on the new config value, and we only
 		// need it for the duration of this call
-		
+
 		// Process the configuration
 		auto config = static_cast<rgbLed::Config *>(newConfig);
 		if (logger)

@@ -35,14 +35,15 @@ using Debug = ConditionalDebug<true, "Logger Parser">;
 #define LOGGER_CONFIG "logger"
 DEFINE_PARSER_CONFIG_CAPABILITY(LOGGER_CONFIG, sizeof(logger::Config), 500);
 
+namespace
+{
 
-namespace {
+	bool isaddr(char c)
+	{
+		return ((c == '.') || (c >= '0' && c <= '9'));
+	}
 
-bool isaddr(char c) {
-	return ((c == '.') || (c >= '0' && c <= '9'));
-}
-
-} 
+} // namespace
 /**
  * Parse a LoggerConfig struct.
  */
@@ -50,12 +51,13 @@ int __cheri_callback parse_logger_config(const void *src,
                                          size_t      srcLength,
                                          void       *dst)
 {
-	auto *config = static_cast<logger::Config *>(dst);
+	auto *config    = static_cast<logger::Config *>(dst);
 	auto *srcConfig = static_cast<const logger::Config *>(src);
-	bool parsed = true;
+	bool  parsed    = true;
 
 	// Check the kind is in range
-	switch (srcConfig->level) {
+	switch (srcConfig->level)
+	{
 		case logger::logLevel::Debug:
 		case logger::logLevel::Info:
 		case logger::logLevel::Warn:
@@ -63,38 +65,48 @@ int __cheri_callback parse_logger_config(const void *src,
 			config->level = srcConfig->level;
 			break;
 
-		default:	
-			Debug::log("thread {} Invalid logLevel {}", thread_id_get(), srcConfig->level);
+		default:
+			Debug::log("thread {} Invalid logLevel {}",
+			           thread_id_get(),
+			           srcConfig->level);
 			parsed = false;
 			break;
 	}
 
 	// Check the host address
-	for (auto i=0; i< sizeof(config->host.address); i++) {
+	for (auto i = 0; i < sizeof(config->host.address); i++)
+	{
 		auto c = srcConfig->host.address[i];
 
-		if (c == 0) {
+		if (c == 0)
+		{
 			config->host.address[i] = c;
 			break;
 		}
-		if (!isaddr(c)) {
+		if (!isaddr(c))
+		{
 			Debug::log("Invalid character {} in host.address", c);
 			parsed = false;
-			break; 
-		} else {
+			break;
+		}
+		else
+		{
 			config->host.address[i] = c;
 		}
 	}
 
 	// check the port.  As its defined to be a uint_16 any
-	// value i svalide, apart form 0 which is reserved  
-	if (srcConfig->host.port > 0) {
+	// value i svalide, apart form 0 which is reserved
+	if (srcConfig->host.port > 0)
+	{
 		config->host.port = srcConfig->host.port;
-	} else {
-		Debug::log("Invalid host.port {}", config->host.port);
-		parsed = false;	
 	}
-	
+	else
+	{
+		Debug::log("Invalid host.port {}", config->host.port);
+		parsed = false;
+	}
+
 	return (parsed) ? 0 : -1;
 }
 

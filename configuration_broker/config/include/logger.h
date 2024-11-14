@@ -8,27 +8,28 @@
  * logging service.
  */
 
-namespace logger { 
-
-enum class logLevel
+namespace logger
 {
-	Debug = 0,
-	Info  = 1,
-	Warn  = 2,
-	Error = 3
-};
 
-struct Host
-{
-	char     address[16]; // ipv4 address of host
-	uint16_t port;        // port on host
-};
+	enum class logLevel
+	{
+		Debug = 0,
+		Info  = 1,
+		Warn  = 2,
+		Error = 3
+	};
 
-struct Config
-{
-	Host     host;  // Details of the host
-	logLevel level; // required logging level
-};
+	struct Host
+	{
+		char     address[16]; // ipv4 address of host
+		uint16_t port;        // port on host
+	};
+
+	struct Config
+	{
+		Host     host;  // Details of the host
+		logLevel level; // required logging level
+	};
 
 }; // namespace logger
 

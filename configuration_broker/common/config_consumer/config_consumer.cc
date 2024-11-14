@@ -23,7 +23,9 @@ namespace ConfigConsumer
 	 * or more configuration values and then calls the
 	 * appropriate handler.
 	 */
-	void __cheri_libcall run(ConfigItem configItems[], size_t numOfItems, uint16_t maxTimeouts)
+	void __cheri_libcall run(ConfigItem configItems[],
+	                         size_t     numOfItems,
+	                         uint16_t   maxTimeouts)
 	{
 		// Just for the demo keep track of the number to timeouts to give
 		// a clean exit
@@ -63,7 +65,7 @@ namespace ConfigConsumer
 				if (events[i].value == 1)
 				{
 					Debug::log("Item {} of {} changed", i, numOfItems);
-				
+
 					auto c    = &configItems[i];
 					auto item = get_config(c->capability);
 
@@ -134,7 +136,8 @@ namespace ConfigConsumer
 				Debug::log(
 				  "thread {} wait timeout {}", thread_id_get(), num_timeouts);
 				// For the demo exit the thread when we stop getting updates
-				if (maxTimeouts >0 && num_timeouts >= maxTimeouts) {
+				if (maxTimeouts > 0 && num_timeouts >= maxTimeouts)
+				{
 					break;
 				}
 			}

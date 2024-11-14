@@ -20,7 +20,7 @@ As well as providing run time controls this aspect of the configuration can be a
 * A sandbox compartment in which untrusted data can be verified and converted to trusted configuration values.
 
 The core Configuration Broker has been written to be generic and directly reusable, and has no dependencies on the specific configuration items being managed.
-To builds (ibex-sim and Sonata) are provided to show how this can then be incoprated into systems, with supporting code to deal with specific configrutaion items.
+To builds (ibex-sim and Sonata) are provided to show how this can then be incorporated into systems, with supporting code to deal with specific configuration items.
 All are example of how to develop such components using CHERIoT features such as static sealed capabilities, memory claims, locks, event-waiters, and sandbox compartments for handling untrusted data.
 
 Providing a generic broker and expressing the trust model via its interfaces makes it possible to add support for new configuration items without having to re-evaluate the trust model each time. 
@@ -50,9 +50,10 @@ Providing a generic broker and expressing the trust model via its interfaces mak
     - [User LEDs](#user-leds)
     - [Logger](#logger)
   - [Threads](#threads)
-- [Build Instructions (Dev container)](#build-instructions-dev-container)
-  - [Ibex](#ibex)
-  - [Sonata](#sonata)
+  - [Build Instructions (Dev container)](#build-instructions-dev-container)
+- [Sonata](#sonata)
+  - [MQTT Topics](#mqtt-topics)
+  - [Build Instructions (Dev container)](#build-instructions-dev-container-1)
 
 
 # Overview
@@ -71,27 +72,103 @@ All operations take place on a thread calling into the Broker, and it only calls
 Providers, Consumers, and Parsers are assigned their rights via Static Sealed Capabilities, which only the Broker can unseal.
 This means this aspect is fixed at build time and is auditable.
 
+The general compartment model is therefore something like:  
+
 ```mermaid
 block-beta
+    untrustedData("Untrusted\nData") space:4
     columns 5
-    space:4 consumer#1("Consumer #1")
-    provider("MQTT") space broker("Broker") space:2
-    space:4 consumer#2("Consumer #2")
     space:5
-    space:1 parser#1("Parser #1") parser#2("Parser #2") parser#3("Parser #3") 
+    provider("Provider") space broker("Broker") space consumer("Consumer")
+    space:5
+    p_init("Parser Init") space:1 parser("Parser") space:2
+    space:5
     
+    style untrustedData fill:#fff,stroke:#fff
+    
+    untrustedData --> provider
     provider-- "set" -->broker
-    consumer#1-- "get" -->broker
-    consumer#2-- "get" -->broker
-    broker-- "parse" -->parser#1
-    broker-- "parse" -->parser#2
-    broker-- "parse" -->parser#3
+    consumer-- "get" -->broker
+    broker-- "parse" -->parser
+    
+    p_init --"init"--> parser
 ```
 
 The model can be thought of as similar to a pub/sub architecture with a single retained message for each item and a security policy for clients defined at build time through static sealed capabilities.
 The configuration data is declarative so there is no need or value in maintaining a full sequence of updates; each new version is a complete definition of the required configuration item. 
 Aligned with the pub/sub model publishing items and subscribing for items can happen in any sequence; a consumer will receive any data that is already published, and any subsequent updates.
 This avoids any timing issues during system startup.
+
+The following sequence diagram shows how a provider thread and a consumer thread interact with the broker to turn untrusted data in the Provider to trusted data in the Consumer.  
+
+```mermaid
+sequenceDiagram
+  participant Init as Init Thread
+  participant Provider as Provider Thread
+  participant Parser as Parser(s)
+  participant Broker as Config Broker
+  participant Futex as Version Futex
+  participant Consumer as Consumer Thread
+
+  activate Consumer
+  Consumer ->> Broker : get()
+  
+  deactivate Consumer
+  activate Broker
+  Broker ->>+ Consumer: (version, data, futex)
+  
+  deactivate Broker
+  activate Consumer
+  Consumer ->> Futex : wait()
+
+  activate Futex
+  deactivate Consumer
+
+  activate Init
+  Init ->> Parser: init()
+
+  activate Parser
+  Parser ->> Broker : register()
+  deactivate Parser
+
+  Init --> Provider : 
+  deactivate Init
+
+  activate Provider
+  Provider ->> Broker: set()
+  deactivate Provider
+
+  
+  activate Broker
+  Broker->> Parser: parse()
+  deactivate Broker
+
+  activate Parser
+  Parser ->> Broker : data
+  deactivate Parser
+
+  activate Broker
+  Broker->> Futex: version++
+
+  Futex ->> Consumer: wake()
+  deactivate Futex
+  activate Consumer
+
+  Broker ->> Provider : 
+  deactivate Broker
+
+  Consumer ->> Broker : get()
+  deactivate Consumer
+  activate Broker
+  
+  Broker ->> Consumer: (version, data, futex)
+  deactivate Broker
+  activate Consumer
+
+  Consumer ->> Futex : wait()
+  deactivate Consumer
+  activate Futex
+```
 
 In the demo new values are provided as serialised JSON strings.
 Depending on the build target these are either predefined test data (ibex-sim) or come via MQTT (Sonata). 
@@ -202,10 +279,9 @@ It has control over when it's thread waits on the futex for a new version, and f
 # Initalisation
 A key aspect of the design is to be able to add new configuration items just by creating the associated sealed capabilities and assigning them to the appropriate compartments.
 To support this approach each parser must register with the broker.
-This is turn creates an initialisation issue as the parsers do not have their own thread (the run on the thread that want's to set a vew value), and Cheriot has no general init mechanism.
+This is turn creates an initialisation issue as the parsers do not have their own thread (the run on the thread that want's to set a vew value), and CHERIoT has no general init mechanism.
 Ideally we would restrict the scope of who can call a parser to just the config-broker, but that would require the broker to know about all parsers.
-Instead we add a build-specific parser-init compartment, that is used as the stating point for the provide thread.
-This calls each of the parsers before transfering into the mqtt thread, which allows us to still assert limits around access to the parsers. 
+Instead we start one thread in a build-specific parser-init compartment, that calls each of the parsers init methods before transferring into the provider compartment.  This allows us to still assert limits around which compartments access to the parsers. 
 
 # Repository Structure
 The demo can be built for two targets.
@@ -213,9 +289,13 @@ The demo can be built for two targets.
 * sonata provides a deployment for a sonata board using the user and RGB LEDs with data provided by the MQTT network stack.
 
 To support these two builds, and show how the common aspects of the broker can be used in other systems, the code is structured as follows:
-**/common** - code that is indepenent from specific configuration items
-**/config** - definitions of configruation data and the associated parsers
+
+**/common** - code that is independent from specific configuration items
+
+**/config** - definitions of configuration data and the associated parsers
+
 **/ibex-safe-simulator** - demo providers and consumers that do not need h/w
+
 **/sonata** - MQTT network provider and Sonata configuration consumers
 
 _/config could be considered platform specific, but in this example some data types and parsers are common to both builds._
@@ -227,25 +307,25 @@ _/config could be considered platform specific, but in this example some data ty
 │   ├── config_consumer
 │   │   └── << Generic consumer library >>
 │   ├── json_parser
-│   │   └── << A wapper to the coreJSON module >>
+│   │   └── << A wrapper to the coreJSON module >>
 │   └── third_party
 │       └── coreJSON
-│           └── << a copy of the freeRTOS coreJSON module  >>
+│           └── << a copy of the freeRTOS coreJSON module >>
 |
 ├── config
 │   ├── include
-│   │   └── << Header files defining configurtaion item data strcutures >>
+│   │   └── << Header files defining configuration item data structures >>
 │   ├── parser_helper.h
 │   └── parsers
-│       └── << Parsers for each configutaion item >>
+│       └── << Parsers for each configuration item >>
 |
 ├── ibex-safe-simulator
 │   ├── consumers
 │   │   └── << Example consumers >>
-│   ├── mqtt
-│   │   └── << A test stub that acts like an MQTT client>>
-│   ├── parser_init
-│   │   └── << Build specific parser iniatliser>>
+│   ├── provider
+│   │   └── << A test stub that acts like an MQTT client >>
+│   ├── init
+│   │   └── << Build specific parser initialiser >>
 │   └── xmake.lua
 |
 └── sonata
@@ -254,6 +334,35 @@ _/config could be considered platform specific, but in this example some data ty
 
 
 # IBEX Simulator
+
+This build provides something akin to test case for the broker;  It runs to completion using test data and with no external dependencies. 
+
+```mermaid
+block-beta
+    untrustedData("Untrusted\nData") space:4
+    columns 5
+    space:4 consumer#1("Consumer #1")
+    provider("Provider") space broker("Broker") space:2
+    space:4 consumer#2("Consumer #2")
+    space:5
+    space:1 parser#1("Parser #1") parser#2("Parser #2") parser#3("Parser #3") space 
+    space:5
+    p_init("Parser Init") space:4
+
+    style untrustedData fill:#fff,stroke:#fff
+    
+    untrustedData --> provider
+    provider-- "set" -->broker
+    consumer#1-- "get" -->broker
+    consumer#2-- "get" -->broker
+    broker-- "parse" -->parser#1
+    broker-- "parse" -->parser#2
+    broker-- "parse" -->parser#3
+
+    p_init --"init"--> parser#1
+    p_init --"init"--> parser#2
+    p_init --"init"--> parser#3
+```
 
 ## Configuration Data
 
@@ -289,7 +398,7 @@ Values are not case sensitive.
 ### Logger
 A contrived example to include a string (to show buffer overflow handling) and which has multiple consumers.
 To show an alterative parser this expects the data to be supplied in binary rather than JSON. 
-The C++ defintion of configuration structure is 
+The C++ definition of configuration structure is 
 ```c++
 enum class logLevel
 {
@@ -320,97 +429,15 @@ There are two Consumers in the demo, each implemented as separate compartments.
 Consumer #1 is authorised to receive the RGB LED configuration.
 Consumer #2 is authorised to receive the User LED configuration.
 Both consumers are authorised to receive the Logger configuration.
-The latest logger configuration is used when updating the LED configurtaions to show the use of heap claims to kept a value available between updates.
+The latest logger configuration is used when updating the LED configurations to show the use of heap claims to kept a value available between updates.
 
 A thread is started in each consumer which waits for new versions to become available and then, to keep the demo h/w agnostic, makes a library call to print the received value.
 
-The following sequence diagram shows the flow of the threads across the compartments. 
-
-```mermaid
-sequenceDiagram
-  participant Parser
-  participant MQTT
-  participant Parser as Parser(s)
-  participant Broker as Config Broker
-  participant Futex as Version Futex
-  participant Consumer as Consumer(s)
-
-  activate Consumer
-  Consumer ->> Broker : get()
-  
-  deactivate Consumer
-  activate Broker
-  Broker ->>+ Consumer: (version, data, futex)
-  
-  deactivate Broker
-  activate Consumer
-  Consumer ->> Futex : wait()
-
-  activate Futex
-  deactivate Consumer
-
-  activate MQTT
-  MQTT ->> Provider: (topic, json)
-  deactivate MQTT
-
-  activate Provider
-  Provider ->> Broker: set()
-  deactivate Provider
-
-  activate Broker
-  Broker->> Parser: init() <on first get>
-  deactivate Broker
-
-  activate Parser
-  Parser ->> Broker : register()
-  deactivate Parser
-
-  activate Broker
-  Broker->> Parser: parse()
-  deactivate Broker
-
-  activate Parser
-  Parser ->> Broker : data
-  deactivate Parser
-
-  activate Broker
-  Broker->> Futex: version++
-
-  Futex ->> Consumer: wake()
-  deactivate Futex
-  activate Consumer
-
-  Broker ->> Provider : 
-  deactivate Broker
-
-  activate Provider
-  Provider ->> MQTT : 
-  deactivate Provider
-  activate MQTT
-
-  Consumer ->> Broker : get()
-  deactivate Consumer
-  activate Broker
-  
-  Broker ->> Consumer: (version, data, futex)
-  deactivate Broker
-  activate Consumer
-
-  Consumer ->> Futex : wait()
-  deactivate Consumer
-  activate Futex
-
-  MQTT ->> MQTT : sleep()
-  MQTT ->> Provider: (topic, json)
-  deactivate MQTT
-
-```
 The demo uses the "ibex-safe-simulator" board as its target, since this provides a realtime clock.
 This allows the Provider to sleep between messages giving the Consumers a chance to run.    
 
-# Build Instructions (Dev container)
+## Build Instructions (Dev container)
 
-## Ibex
 ```
 cd configuration_broker/ibex-safe-simulator
 xmake config --sdk=/cheriot-tools -P .
@@ -418,8 +445,103 @@ xmake
 xmake run
 ```
 
-## Sonata
-The network stack takes a lot of extra resources, so build without IPv6 support.
+# Sonata
+
+The Sonata build combines the configuration broker with the network stack to interact with an external MQTT broker to receive configuration and publish status.
+
+The following diagram shows the compartments and provides an indication of the scope of the various threads.
+_Threads are, of course, orthogonal to compartments so this should be seen only as indication of the boundaries between threads ._ 
+
+```mermaid
+block-beta
+    columns 13
+    space:12 rgbLED("RGB LED")
+    space:4 mqtt("MQTT") space provider("Provider") space broker("Broker") space consumer("Consumer") space userLED("User LED")
+    space:10 t3<["thread3"]>(up) space lcd("LCD")
+    space:4 tls("TLS") space:3 parser("Parsers") space:4
+    ntporg("ntp.org") space:9 sysConfig("System Config") space switches("Switches") 
+    mosquitto("mosquitto.org") space firewall("Firewall") space tcp("TCP") space:3 parserInit("Parser Init") space:4
+    space:2 t5<["thread5"]>(up) space t4<["thread4"]>(up) space:3  t1<["thread1"]>(up) space:4
+    space:6 netInit("Net Init") space:6
+    space:4 ntp("SNTP") space t2<["thread2"]>(up) space:6
+    
+    style rgbLED   fill:#fff,stroke:#fff
+    style userLED  fill:#fff,stroke:#fff
+    style lcd      fill:#fff,stroke:#fff
+    style switches fill:#fff,stroke:#fff
+
+    style mosquitto fill:#fff
+    style ntporg fill:#fff
+
+    style t5 fill:#d7bde2
+    style firewall fill:#d7bde2
+
+    style t4 fill:#aed6f1
+    style tcp fill:#aed6f1
+
+    style t2 fill:#e6b0aa
+    style netInit fill:#e6b0aa
+    style ntp fill:#e6b0aa
+    style provider fill:#e6b0aa
+    style mqtt fill:#e6b0aa
+    style tls fill:#e6b0aa
+    
+    style t1 fill:#f7dc6f
+    style parserInit fill:#f7dc6f
+    style sysConfig fill:#f7dc6f
+    
+    style t3 fill:#a9dfbf
+    style consumer fill:#a9dfbf
+     
+
+    mosquitto --"ethernet"--> firewall
+    firewall --> mosquitto
+
+    firewall --> tcp 
+    tcp --> firewall
+
+    tcp --> tls
+    tls --> tcp
+
+    tls --> mqtt
+    mqtt --> tls 
+
+    netInit --> ntp
+    ntp --> firewall
+    netInit --> tcp
+    netInit --> provider
+
+    mqtt --> provider
+    provider --> mqtt
+    
+    provider --> broker
+    broker --> provider
+
+    broker --> parser
+    parser --> broker
+
+    parserInit --> parser
+    parserInit --> sysConfig
+
+    sysConfig --> broker
+
+    broker --> consumer
+
+    consumer --> rgbLED
+    consumer --> userLED
+    consumer --> lcd
+
+    switches --> sysConfig
+```
+
+The demo requires that the Sonata board has an ethernet connection to a network that provides DHCP, DNS, and access to pool.ntp.org and mqtt.mosquitto.org.
+
+## MQTT Topics
+
+
+## Build Instructions (Dev container)
+
+The network stack takes a lot of extra resources, so the example is built without IPv6 support.
 ```
 cd configuration_broker/sonata
 xmake

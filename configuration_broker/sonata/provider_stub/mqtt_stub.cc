@@ -50,7 +50,7 @@
 
 #include "provider.h"
 
-#include "../../config/include/system_config.h"	
+#include "../../config/include/system_config.h"
 
 // Expose debugging features unconditionally for this compartment.
 using Debug = ConditionalDebug<true, "MQTT">;
@@ -86,7 +86,7 @@ namespace
 	   "{\"led0\":\"on\",\"led1\":\"off\",\"led2\":\"ON\",\"led3\":\"OFF\","
 	   " \"led4\":\"On\",\"led5\":\"Off\",\"led6\":\"on\",\"led7\":\"off\"}"},
 
-      // Valid RGB LED config
+	  // Valid RGB LED config
 	  {"Valid RGB LED config",
 	   0,
 	   "rgbled",
@@ -107,7 +107,6 @@ namespace
 	   "{\"led0\":{\"red\":0,  \"green\":286,\"blue\":400},"
 	   " \"led1\":{\"red\":255,\"green\":200,\"blue\":200}}"},
 
-	  
 	};
 
 } // namespace
@@ -121,12 +120,12 @@ namespace
  */
 void __cheri_compartment("provider") provider_init()
 {
-
 	for (auto &m : Messages)
 	{
 		Debug::log("-------- {} --------", m.description);
 		Debug::log("thread {} Send {} {}", thread_id_get(), m.topic, m.json);
-		auto res = updateConfig(m.topic, strlen(m.topic), m.json, strlen(m.json));
+		auto res =
+		  updateConfig(m.topic, strlen(m.topic), m.json, strlen(m.json));
 		Debug::Assert(res == m.expected, "Unexpected result {}", res);
 
 		// Give the consumers a chance to run
