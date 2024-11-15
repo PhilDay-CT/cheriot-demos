@@ -75,6 +75,9 @@ int __cheri_callback parse_User_LED_config(const void *src, void *dst)
 	// query the individual values and populate the config struct
 	bool parsed = true;
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> c90fa99 (Add libhydrogen as a submodule)
 	parsed      = parsed &&
 	         get_enum<userLed::State>(json, jsonLength, "led0", &config->led0);
 	parsed = parsed &&
@@ -91,6 +94,7 @@ int __cheri_callback parse_User_LED_config(const void *src, void *dst)
 	         get_enum<userLed::State>(json, jsonLength, "led6", &config->led6);
 	parsed = parsed &&
 	         get_enum<userLed::State>(json, jsonLength, "led7", &config->led7);
+<<<<<<< HEAD
 =======
 	parsed = parsed && get_enum<userLed::State>(json, "led0", &config->led0);
 	parsed = parsed && get_enum<userLed::State>(json, "led1", &config->led1);
@@ -101,6 +105,8 @@ int __cheri_callback parse_User_LED_config(const void *src, void *dst)
 	parsed = parsed && get_enum<userLed::State>(json, "led6", &config->led6);
 	parsed = parsed && get_enum<userLed::State>(json, "led7", &config->led7);
 >>>>>>> e5b5a20 (Reworked to provide both ibex-safe-sim and sonata builds)
+=======
+>>>>>>> c90fa99 (Add libhydrogen as a submodule)
 
 	// Free any heap the parser might have left allocated.
 	// Calling heap_free_all() is quite expensive as it has to walk all

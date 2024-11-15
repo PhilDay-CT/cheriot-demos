@@ -16,6 +16,7 @@
 
 #include "config/include/system_config.h"
 
+#include "../crypto/crypto.h"
 #include "config.h"
 #include "status.h"
 
@@ -98,7 +99,11 @@ void __cheri_callback publishCallback(const char *topic,
 		const char *id       = topic + idOffset;
 		size_t      idLength = topicLength - idOffset;
 
-		updateConfig(id, idLength, payload, payloadLength);
+		auto msg = verify_signature(payload, payloadLength);
+		if (msg != nullptr)
+		{
+			updateConfig(id, idLength, msg, msg.bounds());
+		}
 	}
 	else
 	{

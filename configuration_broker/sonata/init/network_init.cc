@@ -12,6 +12,7 @@ using Debug = ConditionalDebug<true, "Network Init">;
 
 // Next step in initalisation
 void __cheri_compartment("provider") provider_run();
+void __cheri_compartment("crypto") crypto_init();
 
 /**
  * Initialise the network stack
@@ -38,7 +39,9 @@ void __cheri_compartment("network_init") network_init()
 		{
 			// Truncate the epoch time to 32 bits for printing.
 			Debug::log("Current UNIX epoch time: {}", int32_t(tv.tv_sec));
-			provider_run();
+		
+			// Run the next init stage
+			crypto_init();
 		}
 		else
 		{

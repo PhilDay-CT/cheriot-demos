@@ -23,6 +23,9 @@ includes("../common/json_parser")
 includes("../common/config_broker") 
 includes("../common/config_consumer")
 
+-- crypto compartment
+includes("crypto")
+
 -- init compartments
 includes("init")
 
@@ -49,6 +52,8 @@ firmware("config-broker-sonata")
     add_deps("config_consumer")
 
     -- compartments
+    add_deps("crypto")
+    
     add_deps("parser_init")
     add_deps("network_init")
 
