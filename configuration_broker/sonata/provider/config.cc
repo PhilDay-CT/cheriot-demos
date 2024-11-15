@@ -68,7 +68,7 @@ int updateConfig(const char *name,
 	std::string_view svName(name, nameLength);
 	std::string_view svJson((char *)json, jsonLength);
 	Debug::log("thread {} update {}: {}", thread_id_get(), svName, svJson);
-
+	
 	// Initalise the name map
 	set_up_name_map();
 
@@ -82,7 +82,7 @@ int updateConfig(const char *name,
 		if (strncmp(t.name, name, nameLength) == 0)
 		{
 			found = true;
-			res   = set_config(t.cap, (const char *)json, jsonLength);
+			res   = set_config(t.cap, (char *)json, jsonLength);
 			if (res < 0)
 			{
 				Debug::log("thread {} Failed to set value for {}",
