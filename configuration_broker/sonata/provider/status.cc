@@ -72,9 +72,8 @@ void send_status(SObj mqtt, std::string topic, systemConfig::Config *config)
 
 void clear_status(SObj mqtt, std::string topic)
 {
-	char status[30];
-	Debug::log("Status buffer: {}", status);
-	snprintf(
-	  status, sizeof(status) / sizeof(status[0]), "{\"Status\":\"Off\"}");
-	publish(mqtt, topic, status);
+	char status = 0;
+	//snprintf(
+	//  status, sizeof(status) / sizeof(status[0]), "{\"Status\":\"Off\"}");
+	publish(mqtt, topic, &status);
 }

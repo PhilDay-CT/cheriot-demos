@@ -45,14 +45,14 @@ Providing a generic broker and expressing the trust model via its interfaces mak
 - [Initalisation](#initalisation)
 - [Repository Structure](#repository-structure)
 - [IBEX Simulator](#ibex-simulator)
+  - [Threads](#threads)
   - [Configuration Data](#configuration-data)
     - [RGB LEDs](#rgb-leds)
     - [User LEDs](#user-leds)
     - [Logger](#logger)
-  - [Threads](#threads)
   - [Build Instructions (Dev container)](#build-instructions-dev-container)
 - [Sonata](#sonata)
-  - [MQTT Topics](#mqtt-topics)
+  - [Threads](#threads-1)
   - [Build Instructions (Dev container)](#build-instructions-dev-container-1)
 
 
@@ -322,13 +322,24 @@ _/config could be considered platform specific, but in this example some data ty
 ├── ibex-safe-simulator
 │   ├── consumers
 │   │   └── << Example consumers >>
-│   ├── provider
-│   │   └── << A test stub that acts like an MQTT client >>
 │   ├── init
 │   │   └── << Build specific parser initialiser >>
+│   ├── provider
+│   │   └── << A test stub that acts like an MQTT client >>
 │   └── xmake.lua
 |
-└── sonata
+├── sonata
+│   ├── consumers
+│   │   └── << Example consumers >>
+│   ├── init
+│   │   └── << Network and build specific parser initialiser >>
+│   ├── provider
+│   │   └── << A test stub that acts like an MQTT client >>
+│   ├── system_config
+│   │   └── << A configuration item generator >>
+│   ├── third_party
+│   │   └── << Sonat LCD display driver >>
+│   └── xmake.lua
 
 ```
 
@@ -363,6 +374,21 @@ block-beta
     p_init --"init"--> parser#2
     p_init --"init"--> parser#3
 ```
+
+## Threads
+A thread which starts in the MQTT stub provides a sequence of valid and invalid configuration values from the corresponding topics. 
+
+There are two Consumers in the demo, each implemented as separate compartments.
+
+Consumer #1 is authorised to receive the RGB LED configuration.
+Consumer #2 is authorised to receive the User LED configuration.
+Both consumers are authorised to receive the Logger configuration.
+The latest logger configuration is used when updating the LED configurations to show the use of heap claims to kept a value available between updates.
+
+A thread is started in each consumer which waits for new versions to become available and then, to keep the demo h/w agnostic, makes a library call to print the received value.
+
+The demo uses the "ibex-safe-simulator" board as its target, since this provides a realtime clock.
+This allows the Provider to sleep between messages giving the Consumers a chance to run.    
 
 ## Configuration Data
 
@@ -420,21 +446,6 @@ struct Config
 	logLevel level; // required logging level
 };
 ```
-
-## Threads
-A thread which starts in the MQTT stub provides a sequence of valid and invalid configuration values from the corresponding topics. 
-
-There are two Consumers in the demo, each implemented as separate compartments.
-
-Consumer #1 is authorised to receive the RGB LED configuration.
-Consumer #2 is authorised to receive the User LED configuration.
-Both consumers are authorised to receive the Logger configuration.
-The latest logger configuration is used when updating the LED configurations to show the use of heap claims to kept a value available between updates.
-
-A thread is started in each consumer which waits for new versions to become available and then, to keep the demo h/w agnostic, makes a library call to print the received value.
-
-The demo uses the "ibex-safe-simulator" board as its target, since this provides a realtime clock.
-This allows the Provider to sleep between messages giving the Consumers a chance to run.    
 
 ## Build Instructions (Dev container)
 
@@ -536,8 +547,43 @@ block-beta
 
 The demo requires that the Sonata board has an ethernet connection to a network that provides DHCP, DNS, and access to pool.ntp.org and mqtt.mosquitto.org.
 
-## MQTT Topics
+## Threads
+Thread #1 performs the initialisation of the parsers and then loops in the _System Config_ compartment where it generates a "systemConfig" configuration item by reading the values of the switches on the Sonata board.
+```c++
+namespace systemConfig
+{
 
+	const auto IdLength = 16;
+
+	struct Config
+	{
+		char id[IdLength];
+		bool switches[8];
+	};
+
+}
+```
+
+The _id_ value is used to determine which MQTT topics to use, and is the combination of a randomly generated string and the numeric value of the first two switches, for example "ghdyeosp_1".
+Changing the switches changes the id causes the system to subscribe to a different set of topics.
+If the broker is populated with a collection of persistently published messages this allows a board to move between different configurations without having to republish the messages to MQTT.
+The random string can be replaces with a fixed name by passing a system-id value to xmake config
+```
+   xmake f --system-id=MySystem --IPv6=n  --sdk=/cheriot-tools -P .
+```
+
+Thread #2 performs the network initialisation and then loops in the _provider_ compartment handing the interaction with the MQTT broker.
+It responds to changes to the _System Config_ (which it gets from the _config broker_ ) by changing the topics it is subscribed to and by publishing the status.
+The topics used are:
+   sonata-config/Config/<system-id>/user_LED 
+   sonata-config/Config/<system-id>/rgb_LED
+   sonata-config/Status/<system-id> 
+
+The values published to the two Config topics are the JSON strings described in [Configuration Data](#configuration-data).
+
+Thread #3 loops in the _consumer_ compartment and responds to changes in the coinfiguration data by updating the LEDs and LCD on the Sonata board. 
+
+Threads #4 and #5 are the standard TCP and Firewall threads required by the Network stack. 
 
 ## Build Instructions (Dev container)
 
@@ -548,3 +594,5 @@ xmake
 xmake config --IPv6=n --sdk=/cheriot-tools/ -P .
 xmake run
 ```
+
+The --system-id parameter can be used to give the build a determistic system id. 
