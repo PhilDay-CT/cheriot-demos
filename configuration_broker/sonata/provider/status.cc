@@ -10,13 +10,15 @@
 
 #include "config/include/system_config.h"
 
+#include "../crypto/crypto.h"
+
 // Expose debugging features unconditionally for this compartment.
 using Debug = ConditionalDebug<true, "Status">;
 
 // Publish a string to the status topic
-void publish(SObj mqtt, std::string topic, const char *status)
+void publish(SObj mqtt, std::string topic, void *status)
 {
-	// Use a capabaility with only Load
+	// Use a capability with only Load
 	// permission so we can be sure the MQTT stack
 	// doesn't capture a pointer to our buffer
 	Timeout           t{MS_TO_TICKS(5000)};
@@ -29,7 +31,7 @@ void publish(SObj mqtt, std::string topic, const char *status)
 	                        topic.data(),
 	                        topic.size(),
 	                        roJSON,
-	                        strlen(status));
+	                        roJSON.bounds());
 
 	if (ret < 0)
 	{
@@ -39,6 +41,7 @@ void publish(SObj mqtt, std::string topic, const char *status)
 
 void send_status(SObj mqtt, std::string topic, systemConfig::Config *config)
 {
+	Debug::log("Sending Status");
 	char status[100];
 
 	static uint8_t prev = 0;
@@ -67,7 +70,19 @@ void send_status(SObj mqtt, std::string topic, systemConfig::Config *config)
 	  config->switches[5] ? 1 : 0,
 	  config->switches[6] ? 1 : 0,
 	  config->switches[7] ? 1 : 0);
-	publish(mqtt, topic, status);
+
+	// Get a signed version
+	Debug::log("Singing status");
+	
+	CHERI::Capability<void> signed_message = sign(MALLOC_CAPABILITY, "StatusCX", status, strlen(status));  
+	if (signed_message.is_valid()) {
+		Debug::log("Got signed message {}", signed_message);
+		publish(mqtt, topic, signed_message);
+		heap_free(MALLOC_CAPABILITY, signed_message);
+	}
+	else {
+		Debug::log("Failed to sign message");
+	}
 }
 
 void clear_status(SObj mqtt, std::string topic)
