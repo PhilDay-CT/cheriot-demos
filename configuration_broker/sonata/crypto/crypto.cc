@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 #include <compartment.h>
+#include <cstdlib>
 #include <debug.hh>
 
 void __cheri_compartment("provider") provider_run();
@@ -16,7 +17,7 @@ using CHERI::Capability;
 
 #include "crypto.h"
 #include "./config_pub_key.h"
-
+#include "./status_pri_key.h"
 
 
 /**
@@ -57,6 +58,7 @@ Capability<void> __cheri_compartment("crypto") verify_signature(const void *payl
 	{
 		Debug::log("Signature Verified");
 		Capability result {message};
+		result.permissions() &= {CHERI::Permission::Load};
 		result.bounds() = messageLength;
 		return result;  
 	}
@@ -66,3 +68,43 @@ Capability<void> __cheri_compartment("crypto") verify_signature(const void *payl
 	}
 }
 
+/**
+ * Create a signed message.
+ *
+ * Packed as Context[8] + Signature[64] + Message
+ */
+CHERI::Capability<void>  __cheri_compartment("crypto") sign(SObj allocator, const char* context,
+               const char *message, size_t messageLength) {
+
+	Timeout t{100};
+	size_t s_size = hydro_sign_CONTEXTBYTES + hydro_sign_BYTES + messageLength;
+	void *signed_message = heap_allocate(&t, allocator, s_size);
+	if (!Capability{signed_message}.is_valid())
+	{
+		Debug::log("Failed to allocate {} of heap for signed message", s_size);
+		return signed_message;
+	}
+
+	char *s_context = (char *)signed_message;
+	uint8_t *s_signature = (uint8_t *)s_context + hydro_sign_CONTEXTBYTES;
+	char *s_message = (char *)s_signature + hydro_sign_BYTES;
+
+	strncpy(s_context, context, hydro_sign_CONTEXTBYTES);
+	strncpy(s_message, message, messageLength);
+	
+	// Stuff to look up key from context goes here
+	//
+	uint8_t *key = status_pri_key;
+	
+	Debug::log("Signing");
+	hydro_sign_create(s_signature, message, messageLength, context, status_pri_key);
+	Debug::log("Signed");
+
+	// Create a read only capabilty that is bound to the size of the message
+	Capability<void>s_cap = {signed_message};
+	s_cap.permissions() &= {CHERI::Permission::Load};
+	s_cap.bounds() = s_size;
+
+	return s_cap;
+}
+ 
