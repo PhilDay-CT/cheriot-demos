@@ -13,6 +13,5 @@ extern "C" uint32_t rand_32()
 	static EntropySource rng;
 	uint64_t r = rng();
 	uint32_t r32 = r & 0xffffffff;
-	Debug::log("r: {}, r32: {}", r, r32);
 	return r32;
 }

@@ -87,8 +87,11 @@ void send_status(SObj mqtt, std::string topic, systemConfig::Config *config)
 
 void clear_status(SObj mqtt, std::string topic)
 {
-	char status = 0;
-	//snprintf(
-	//  status, sizeof(status) / sizeof(status[0]), "{\"Status\":\"Off\"}");
-	publish(mqtt, topic, &status);
+	// Clear the peristent status message by
+	// pubishing a zero length message   
+	char status;
+	CHERI::Capability statusCap = {&status};
+	statusCap.bounds() = 0;
+	Debug::log("clear status with {}", statusCap);
+	publish(mqtt, topic, statusCap);
 }
