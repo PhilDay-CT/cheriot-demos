@@ -21,23 +21,6 @@ using CHERI::Capability;
 #include "./status_pri_key.h"
 #include "./status_pub_key.h"
 
-void hexToString(char *buf, int s)
-{
-	const char Hexdigits[] = "0123456789abcdef";
-	buf[1] = Hexdigits[s & 0xf];
-	s >>= 4;
-	buf[0] = Hexdigits[s & 0xf];
-}
-
-void printHexString(const char *label, uint8_t *data, size_t dataLength) {
-	char buffer[2*dataLength+1];
-	for (auto i=0; i < dataLength; i++)
-	{
-		hexToString(buffer+(2*i), *(data+i));
-	}
-	buffer[2*dataLength] = 0;
-	Debug::log("{}: {}", label, (const char*)buffer);
-}
 
 /**
  * Initaliser for libHyrogen 
@@ -115,26 +98,8 @@ CHERI::Capability<void>  __cheri_compartment("crypto") sign(SObj allocator, cons
 	//
 	uint8_t *key = status_pri_key;
 	
-	Debug::log("Signing");
 	hydro_sign_create(s_signature, message, messageLength, context, status_pri_key);
-	Debug::log("Signed");
-
-    //printHexString("privKey", status_pri_key, hydro_sign_SECRETKEYBYTES);
 	
-	// Verify the signature we just created
-	printHexString("sig    ", s_signature, hydro_sign_BYTES);
-	printHexString("message", (uint8_t *)message, messageLength);
-	Debug::log("length : {}", (int)messageLength);
-	printHexString("context", (uint8_t *)context, hydro_sign_CONTEXTBYTES);
-	printHexString("pubKey ", status_pub_key, hydro_sign_PUBLICKEYBYTES);
-	
-	auto res = hydro_sign_verify(s_signature, message, messageLength, context, status_pub_key);
-	Debug::log("Verify gives {}", res);
-
-	Debug::log("Message ++{}++", message);
-	Debug::log("Context ++{}++", context);
-	
-
 	// Create a read only capabilty that is bound to the size of the message
 	Capability<void>s_cap = {signed_message};
 	s_cap.permissions() &= {CHERI::Permission::Load};

@@ -72,11 +72,9 @@ void send_status(SObj mqtt, std::string topic, systemConfig::Config *config)
 	  config->switches[7] ? 1 : 0);
 
 	// Get a signed version
-	Debug::log("Singing status");
-	
 	CHERI::Capability<void> signed_message = sign(MALLOC_CAPABILITY, "StatusCX", status, strlen(status));  
 	if (signed_message.is_valid()) {
-		Debug::log("Got signed message {}", signed_message);
+		Debug::log("Publishing signed message {}", signed_message);
 		publish(mqtt, topic, signed_message);
 		heap_free(MALLOC_CAPABILITY, signed_message);
 	}
