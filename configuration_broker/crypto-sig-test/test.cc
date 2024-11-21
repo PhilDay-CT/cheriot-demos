@@ -8,8 +8,8 @@
 using Debug = ConditionalDebug<true, "Hydro test">;
 
 #define CONTEXT "Examples"
-#define MESSAGE "Arbitrary data to hash"
-#define MESSAGE_LEN 22
+#define MESSAGE "X"
+#define MESSAGE_LEN 1
 
 #include "hydrogen.h"
 
@@ -73,14 +73,24 @@ void hash() {
 void sign() {
 	Debug::log("----------- Sign and verify ------------");
 	
-	hydro_sign_keypair key_pair;
-	hydro_sign_keygen(&key_pair);
-
 	printHexString("message", (uint8_t *)MESSAGE, MESSAGE_LEN);
 	printHexString("context", (uint8_t *)CONTEXT, 8);
 	
 	uint8_t signature[hydro_sign_BYTES];
+	for (int i=0; i<hydro_sign_BYTES; i++) {
+		signature[i] = 0;	
+	}
+	Debug::log("*** SIGN");
+	hydro_sign_create(signature, MESSAGE, MESSAGE_LEN, CONTEXT, config_pri_key);
+	Debug::log("signed");
+	printHexString("Priv key ", config_pri_key, hydro_sign_SECRETKEYBYTES);
+	printHexString("signature", signature, hydro_sign_BYTES);
 	
+	Debug::log("\n");
+	for (int i=0; i<hydro_sign_BYTES; i++) {
+		signature[i] = 0;	
+	}
+	Debug::log("*** SIGN");
 	hydro_sign_create(signature, MESSAGE, MESSAGE_LEN, CONTEXT, config_pri_key);
 	Debug::log("signed");
 	printHexString("Priv key ", config_pri_key, hydro_sign_SECRETKEYBYTES);

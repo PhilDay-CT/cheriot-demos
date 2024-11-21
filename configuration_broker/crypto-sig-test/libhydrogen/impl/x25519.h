@@ -4,7 +4,11 @@
  * MIT License (MIT)
  */
 
-#if defined(__GNUC__) && defined(__SIZEOF_INT128__)
+ #include <stdio.h>
+
+#if defined(__cheriot__)
+#    define hydro_x25519_WBITS 32
+#elif defined(__GNUC__) && defined(__SIZEOF_INT128__)
 #    define hydro_x25519_WBITS 64
 #else
 #    define hydro_x25519_WBITS 32

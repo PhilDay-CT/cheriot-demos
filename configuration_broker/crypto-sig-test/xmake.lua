@@ -34,7 +34,7 @@ compartment("crypto")
 
 -- Firmware image for the example.
 firmware("crypto-test")
-    add_deps("freestanding", "debug", "string")
+    add_deps("freestanding", "debug", "string", "stdio")
 
     -- compartments
     add_deps("crypto")

@@ -2,6 +2,8 @@
 #define hydro_sign_NONCEBYTES     32
 #define hydro_sign_PREHASHBYTES   64
 
+#include <stdio.h>
+
 static void
 hydro_sign_p2(uint8_t sig[hydro_x25519_BYTES], const uint8_t challenge[hydro_sign_CHALLENGEBYTES],
               const uint8_t eph_sk[hydro_x25519_BYTES], const uint8_t sk[hydro_x25519_BYTES])
@@ -44,7 +46,7 @@ hydro_sign_prehash(uint8_t csig[hydro_sign_BYTES], const uint8_t prehash[hydro_s
     uint8_t         *sig    = &csig[hydro_sign_NONCEBYTES];
     uint8_t         *eph_sk = sig;
 
-    hydro_random_buf(eph_sk, hydro_x25519_SECRETKEYBYTES);
+    //hydro_random_buf(eph_sk, hydro_x25519_SECRETKEYBYTES);
     COMPILER_ASSERT(hydro_x25519_SECRETKEYBYTES == hydro_hash_KEYBYTES);
     hydro_hash_init(&st, (const char *) zero, sk);
     hydro_hash_update(&st, eph_sk, hydro_x25519_SECRETKEYBYTES);
@@ -161,6 +163,12 @@ hydro_sign_final_create(hydro_sign_state *state, uint8_t csig[hydro_sign_BYTES],
 
     hydro_hash_final(&state->hash_st, prehash, sizeof prehash);
 
+    printf("csig %x %x %x %x\n", csig[0], csig[1], csig[2], csig[3]);
+    printf("hash: ");
+    for (int i=0; i<12; i++)
+        printf("%x ", state->hash_st.state[i]);
+    printf("\n");
+    
     return hydro_sign_prehash(csig, prehash, sk);
 }
 
