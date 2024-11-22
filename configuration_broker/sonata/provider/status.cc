@@ -16,7 +16,7 @@
 using Debug = ConditionalDebug<true, "Status">;
 
 // Publish a string to the status topic
-void publish(SObj mqtt, std::string topic, void *status)
+void publish(SObj mqtt, std::string topic, void *status, bool retain)
 {
 	// Use a capability with only Load
 	// permission so we can be sure the MQTT stack
@@ -31,7 +31,8 @@ void publish(SObj mqtt, std::string topic, void *status)
 	                        topic.data(),
 	                        topic.size(),
 	                        roJSON,
-	                        roJSON.bounds());
+	                        roJSON.bounds(),
+							retain);
 
 	if (ret < 0)
 	{
@@ -75,7 +76,7 @@ void send_status(SObj mqtt, std::string topic, systemConfig::Config *config)
 	CHERI::Capability<void> signed_message = sign(MALLOC_CAPABILITY, "StatusCX", status, strlen(status));  
 	if (signed_message.is_valid()) {
 		Debug::log("Publishing signed message {}", signed_message);
-		publish(mqtt, topic, signed_message);
+		publish(mqtt, topic, signed_message, true);
 		heap_free(MALLOC_CAPABILITY, signed_message);
 	}
 	else {
@@ -91,5 +92,5 @@ void clear_status(SObj mqtt, std::string topic)
 	CHERI::Capability statusCap = {&status};
 	statusCap.bounds() = 0;
 	Debug::log("clear status with {}", statusCap);
-	publish(mqtt, topic, statusCap);
+	publish(mqtt, topic, statusCap, true);
 }
