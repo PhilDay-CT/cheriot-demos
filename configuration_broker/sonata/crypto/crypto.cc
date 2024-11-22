@@ -99,6 +99,7 @@ CHERI::Capability<void>  __cheri_compartment("crypto") sign(SObj allocator, cons
 	uint8_t *key = status_pri_key;
 	
 	hydro_sign_create(s_signature, message, messageLength, context, status_pri_key);
+	Debug::log("Signature generated");
 	
 	// Create a read only capabilty that is bound to the size of the message
 	Capability<void>s_cap = {signed_message};
