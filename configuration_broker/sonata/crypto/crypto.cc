@@ -15,12 +15,20 @@ using Error = ConditionalDebug<true, "Crypto">;
 using CHERI::Capability;
 
 #include "hydrogen.h"
-
 #include "crypto.h"
+
+
+// Keys used for signatures - for now compiled in but
+// should be runtime supplied, such as read from the SD
+// card. 
 #include "./config_pub_key.h"
 #include "./status_pri_key.h"
 #include "./status_pub_key.h"
 
+// Size of the header in signed messages
+#define SIGN_HEADER_BYTES hydro_sign_CONTEXTBYTES + hydro_sign_BYTES
+
+namespace CRYPTO {
 
 /**
  * Initaliser for libHyrogen 
@@ -38,13 +46,13 @@ void __cheri_compartment("crypto") crypto_init()
  *
  * Packed as Context[8] + Signature[64] + Message
  */
-Capability<void> __cheri_compartment("crypto") verify_signature(const void *payload, size_t payloadLength)
+Message __cheri_compartment("crypto") verify_signature(const void *payload, size_t payloadLength)
 {
-	size_t messageOffset = hydro_sign_CONTEXTBYTES + hydro_sign_BYTES;
+	size_t messageOffset = SIGN_HEADER_BYTES;
 	if (payloadLength <= messageOffset)
 	{
 		Error::log("Message too short to verify");
-		return nullptr;
+		return {nullptr, 0};
 	}
 	const char *context = (char *)payload;
 	const uint8_t *signature = (uint8_t *)(context + hydro_sign_CONTEXTBYTES);
@@ -59,14 +67,14 @@ Capability<void> __cheri_compartment("crypto") verify_signature(const void *payl
 	if (hydro_sign_verify(signature, message, messageLength, context, key) == 0)
 	{
 		Debug::log("Signature Verified");
-		Capability result {message};
-		result.permissions() &= {CHERI::Permission::Load};
-		result.bounds() = messageLength;
-		return result;  
+		Capability roMessage {message};
+		roMessage.permissions() &= {CHERI::Permission::Load};
+		roMessage.bounds() = messageLength;
+		return {roMessage, messageLength};  
 	}
 	else {
 		Error::log("Signature validation failed");
-		return nullptr;
+		return {nullptr, 0};
 	}
 }
 
@@ -75,16 +83,16 @@ Capability<void> __cheri_compartment("crypto") verify_signature(const void *payl
  *
  * Packed as Context[8] + Signature[64] + Message
  */
-CHERI::Capability<void>  __cheri_compartment("crypto") sign(SObj allocator, const char* context,
+Message  __cheri_compartment("crypto") sign(SObj allocator, const char* context,
                const char *message, size_t messageLength) {
 
 	Timeout t{100};
-	size_t s_size = hydro_sign_CONTEXTBYTES + hydro_sign_BYTES + messageLength;
+	size_t s_size = SIGN_HEADER_BYTES + messageLength;
 	void *signed_message = heap_allocate(&t, allocator, s_size);
 	if (!Capability{signed_message}.is_valid())
 	{
 		Debug::log("Failed to allocate {} of heap for signed message", s_size);
-		return signed_message;
+		return {nullptr, 0};
 	}
 
 	char *s_context = (char *)signed_message;
@@ -106,6 +114,7 @@ CHERI::Capability<void>  __cheri_compartment("crypto") sign(SObj allocator, cons
 	s_cap.permissions() &= {CHERI::Permission::Load};
 	s_cap.bounds() = s_size;
 
-	return s_cap;
+	return {s_cap, s_size};
 }
  
+} // namespace CRYPTO 

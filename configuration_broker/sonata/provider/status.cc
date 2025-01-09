@@ -16,23 +16,33 @@
 using Debug = ConditionalDebug<true, "Status">;
 
 // Publish a string to the status topic
-void publish(SObj mqtt, std::string topic, void *status, bool retain)
+void publish(SObj        mqtt,
+             std::string topic,
+             void       *status,
+             size_t      statusLength,
+             bool        retain)
 {
-	// Use a capability with only Load
+	Timeout t{MS_TO_TICKS(5000)};
+
+	// Use capabilities with only Load
 	// permission so we can be sure the MQTT stack
 	// doesn't capture a pointer to our buffer
-	Timeout           t{MS_TO_TICKS(5000)};
-	CHERI::Capability roJSON{status};
-	roJSON.permissions() &= {CHERI::Permission::Load};
+	CHERI::Capability roTopic{topic.data()};
+	roTopic.permissions() &= {CHERI::Permission::Load};
+	roTopic.bounds().set_inexact(topic.size());
+
+	CHERI::Capability roStatus{status};
+	roStatus.permissions() &= {CHERI::Permission::Load};
+	roStatus.bounds().set_inexact(statusLength);
 
 	auto ret = mqtt_publish(&t,
 	                        mqtt,
 	                        1, // QoS 1 = delivered at least once
-	                        topic.data(),
+	                        roTopic,
 	                        topic.size(),
-	                        roJSON,
-	                        roJSON.bounds(),
-							retain);
+	                        roStatus,
+	                        statusLength,
+	                        retain);
 
 	if (ret < 0)
 	{
@@ -73,13 +83,17 @@ void send_status(SObj mqtt, std::string topic, systemConfig::Config *config)
 	  config->switches[7] ? 1 : 0);
 
 	// Get a signed version
-	CHERI::Capability<void> signed_message = sign(MALLOC_CAPABILITY, "StatusCX", status, strlen(status));  
-	if (signed_message.is_valid()) {
-		Debug::log("Publishing signed message {}", signed_message);
-		publish(mqtt, topic, signed_message, true);
-		heap_free(MALLOC_CAPABILITY, signed_message);
+	size_t statusLength = strlen(status);
+	auto   signed_message =
+	  CRYPTO::sign(MALLOC_CAPABILITY, "StatusCX", status, statusLength);
+	if (signed_message.data.is_valid())
+	{
+		Debug::log("Publishing signed message {}", signed_message.data);
+		publish(mqtt, topic, signed_message.data, signed_message.length, true);
+		heap_free(MALLOC_CAPABILITY, signed_message.data);
 	}
-	else {
+	else
+	{
 		Debug::log("Failed to sign message");
 	}
 }
@@ -87,10 +101,10 @@ void send_status(SObj mqtt, std::string topic, systemConfig::Config *config)
 void clear_status(SObj mqtt, std::string topic)
 {
 	// Clear the peristent status message by
-	// pubishing a zero length message   
-	char status;
+	// pubishing a zero length message
+	char              status;
 	CHERI::Capability statusCap = {&status};
-	statusCap.bounds() = 0;
+	statusCap.bounds()          = 0;
 	Debug::log("clear status with {}", statusCap);
-	publish(mqtt, topic, statusCap, true);
+	publish(mqtt, topic, statusCap, 0, true);
 }

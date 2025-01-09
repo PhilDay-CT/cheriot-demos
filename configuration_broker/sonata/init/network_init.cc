@@ -10,9 +10,8 @@
 
 using Debug = ConditionalDebug<true, "Network Init">;
 
-// Next step in initalisation
-void __cheri_compartment("provider") provider_run();
-void __cheri_compartment("crypto") crypto_init();
+// Needed for the next step in initalisation
+#include "../crypto/crypto.h"
 
 /**
  * Initialise the network stack
@@ -41,7 +40,7 @@ void __cheri_compartment("network_init") network_init()
 			Debug::log("Current UNIX epoch time: {}", int32_t(tv.tv_sec));
 		
 			// Run the next init stage
-			crypto_init();
+			CRYPTO::crypto_init();
 		}
 		else
 		{

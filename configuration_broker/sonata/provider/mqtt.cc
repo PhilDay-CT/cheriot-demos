@@ -59,7 +59,7 @@ std::string config_topic;
 std::string status_topic;
 
 /**
- * Generate config and status topics from an assigned sysetm ID
+ * Generate config and status topics from an assigned system ID
  */
 void generate_topics(char *id)
 {
@@ -99,10 +99,10 @@ void __cheri_callback publishCallback(const char *topic,
 		const char *id       = topic + idOffset;
 		size_t      idLength = topicLength - idOffset;
 
-		auto msg = verify_signature(payload, payloadLength);
-		if (msg != nullptr)
+		auto msg = CRYPTO::verify_signature(payload, payloadLength);
+		if (msg.data != nullptr)
 		{
-			updateConfig(id, idLength, msg, msg.bounds());
+			updateConfig(id, idLength, msg.data, msg.length);
 		}
 	}
 	else

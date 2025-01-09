@@ -68,7 +68,7 @@ int updateConfig(const char *name,
 	std::string_view svName(name, nameLength);
 	std::string_view svJson((char *)json, jsonLength);
 	Debug::log("thread {} update {}: {}", thread_id_get(), svName, svJson);
-	
+
 	// Initalise the name map
 	set_up_name_map();
 

@@ -6,11 +6,9 @@ compartment("crypto")
     add_deps("freestanding", "debug", "cxxrt")
 
     add_includedirs("../third_party/libhydrogen")
-    --add_includedirs("../../crypto-sig-test/libhydrogen")
     add_files("crypto.cc")
     add_files("rand_32.cc")
     add_files("../third_party/libhydrogen/hydrogen.c")
-    --add_files("../../crypto-sig-test/libhydrogen/hydrogen.c")
     
     on_load(function(target)
         target:add('options', "CHERIOT")
