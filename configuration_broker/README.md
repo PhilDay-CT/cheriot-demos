@@ -581,7 +581,7 @@ The topics used are:
 
 The values published to the two Config topics are the JSON strings described in [Configuration Data](#configuration-data).
 
-Thread #3 loops in the _consumer_ compartment and responds to changes in the coinfiguration data by updating the LEDs and LCD on the Sonata board. 
+Thread #3 loops in the _consumer_ compartment and responds to changes in the configuration data by updating the LEDs and LCD on the Sonata board.
 
 Threads #4 and #5 are the standard TCP and Firewall threads required by the Network stack. 
 
