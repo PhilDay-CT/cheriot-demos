@@ -40,7 +40,8 @@ using Debug = ConditionalDebug<false, "Consumer">;
 
 #include "common/config_consumer/config_consumer.h"
 
-//#include "../logos/CT_logo.h"
+#include "../logos/CT_logo.h"
+#include "../logos/DSbD.h"
 
 namespace
 {
@@ -64,8 +65,12 @@ namespace
 
 			if (!init)
 			{
-				// auto logoRect = screen.centered_subrect({105, 80});
-				// lcd.draw_image_rgb565(logoRect, CTLogo105x80);
+				auto logoRect = screen.centered_subrect({105, 80});
+				lcd.draw_image_rgb565(logoRect, CTLogo105x80);
+				
+				auto DSbDRect = Rect::from_point_and_size({screen.right-43, screen.bottom-40}, {43, 40});
+				lcd.draw_image_rgb565(DSbDRect, DSbDLogo43x40);
+				
 				init = true;
 			}
 
